@@ -1,10 +1,10 @@
 {
-  "name": "sigma-js",
-  "version": "0.0.0",
-  "description": "sigmaJS",
+  "name": "sigma-dbclient",
+  "version": "0.1.0",
+  "description": "sigmaDBClient",
   "main": "app.js",
   "author": {
-    "name": ""
+    "name": "David Luis Wiegandt"
   },
   "devDependencies": {
     "@types/node": "^8.0.14"
