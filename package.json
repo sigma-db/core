@@ -1,0 +1,12 @@
+{
+  "name": "sigma-js",
+  "version": "0.0.0",
+  "description": "sigmaJS",
+  "main": "app.js",
+  "author": {
+    "name": ""
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.14"
+  }
+}
