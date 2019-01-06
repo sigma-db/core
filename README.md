@@ -1,4 +1,4 @@
-﻿# sigmaDB
+﻿# sigmaJS
 
 ## Setup
 * If not already present, download and install [Node.js](https://nodejs.org). Depending on your operating system, the native package manager might be preferrable for the retrieval and installation of Node.js.

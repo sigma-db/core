@@ -1,6 +1,7 @@
-﻿import * as http from 'http';
-
-export function toto(g6: string): Promise<object> {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const http = require("http");
+function toto(g6) {
     return new Promise((resolve, reject) => {
         http.get(`http://treedecompositions.com/backend/treewidth/?graph=${g6}`, resp => {
             let data = '';
@@ -11,3 +12,5 @@ export function toto(g6: string): Promise<object> {
         });
     });
 }
+exports.toto = toto;
+//# sourceMappingURL=graph.js.map

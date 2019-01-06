@@ -36,8 +36,25 @@
     <Content Include="README.md" />
     <Content Include="tsconfig.json" />
     <TypeScriptCompile Include="src\app.ts" />
-    <TypeScriptCompile Include="src\graph.ts" />
-    <TypeScriptCompile Include="src\sigmaDB.ts" />
+    <TypeScriptCompile Include="src\box.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\cds.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\constants.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\sigmaJS.ts" />
+    <TypeScriptCompile Include="src\types.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="src\" />
