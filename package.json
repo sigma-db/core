@@ -1,8 +1,7 @@
 {
-  "name": "sigma-dbclient",
-  "version": "0.1.0",
-  "description": "sigmaDBClient",
-  "main": "app.js",
+  "name": "sigma-js",
+  "version": "0.2.0",
+  "description": "Implementation of the Tetris join algorithm by Khamis et al.",
   "author": {
     "name": "David Luis Wiegandt"
   },
