@@ -1,5 +1,5 @@
 ﻿# sigmaJS
-This is an implementation of the *Tetris* join algorithm introduced in [Joins via Geometric Resolutions: Worst Case and Beyond](http://doi.org/10.1145/2967101) by Khamis et al.
+This is an implementation of the *Tetris* join algorithm introduced in [Joins via Geometric Resolutions: Worst Case and Beyond](http://doi.org/10.1145/2967101) by *Khamis et al*.
 The goal is to show that the algorithm admits a straightforward implementation after working out some details left unspecified in the paper itself.
 In particular, we do *not* aim to provide a thoroughly optimised implementation!
 
@@ -10,10 +10,10 @@ In particular, we do *not* aim to provide a thoroughly optimised implementation!
 * Since the project is written in [TypeScript](https://www.typescriptlang.org/), it needs to be *transpiled* into JavaScript first. To this end, download and install the TypeScript compiler using `npm install -g typescript`.
 
 ### Build
-* Change into the project directory and build the project with `tsc --target ES2015 --module CommonJS --outDir dist src/app.ts`. This will generate corresponding JavaScript files which Node.js can natively execute.
+* To build the library and the accompanying sample applications, run `tsc --target ES2015 --module CommonJS --outDir dist samples/bowtie.ts`.
 
 ### Run
-* Start the sample application with `node dist/app.js`.
+* Run the sample application using `node dist/samples/bowtie.js`.
 
 ## Example
 The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *bowtie*-query *Q* which is then executed on *D*.

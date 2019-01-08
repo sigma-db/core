@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2b6ffd9a-f0ed-4235-8e10-d99165627a78</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>src\app.ts</StartupFile>
+    <StartupFile>samples\bowtie.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -49,7 +49,7 @@
   <ItemGroup>
     <Content Include="package.json" />
     <Content Include="README.md" />
-    <TypeScriptCompile Include="src\app.ts" />
+    <TypeScriptCompile Include="samples\bowtie.ts" />
     <TypeScriptCompile Include="src\box.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
@@ -69,12 +69,12 @@
     <TypeScriptCompile Include="src\types.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="test\app.ts">
+    <TypeScriptCompile Include="samples\triangle.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="test\" />
+    <Folder Include="samples\" />
     <Folder Include="src\" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
