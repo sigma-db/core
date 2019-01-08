@@ -1,5 +1,5 @@
 ﻿import { Tuple, Relation } from './types';
-import { L, MIN, MAX, WILDCARD } from './constants';
+import { EXP, MIN, MAX, WILDCARD } from './constants';
 import { Box } from './box';
 
 export class Index {
@@ -29,7 +29,7 @@ export class Index {
             const mask = (1 << root) - 1;
 
             if ((start & mask) == 0 && (end & mask) == mask) {
-                yield (start >> root) ^ (1 << (L - root));
+                yield (start >> root) ^ (1 << (EXP - root));
             }
             else {
                 yield* _dyadic(start, start | (mask >> 1));

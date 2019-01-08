@@ -18,13 +18,13 @@ exports.database = database;
  */
 function query(Q) {
     const _Q = query_1.Query.parse(Q);
-    const all = box_1.Box.all(_Q.head.vars.length); // a box covering the entire search space
+    const all = box_1.Box.all(_Q.head.vars.length); // a box covering the entire space
     return (D) => {
         const result = [];
-        const A = cds_1.cds();
+        const A = new cds_1.CDS();
         const B = _Q.gaps(D);
         let probe = (b) => {
-            const a = cds_1.cover(A, b);
+            const a = A.witness(b);
             if (!!a) {
                 return [true, a];
             }
@@ -48,18 +48,18 @@ function query(Q) {
                     return [true, w2];
                 }
                 let w = w1.resolve(w2);
-                cds_1.insert(A, w);
+                A.insert(w);
                 return [true, w];
             }
         };
         let [v, w] = probe(all);
         while (!v) {
-            let _B = B.filter(_b => _b.contains(w));
+            let _B = B.witnessAll(w);
             if (_B.length == 0) {
                 result.push(w.tuple());
                 _B = [w];
             }
-            cds_1.insert(A, ..._B);
+            A.insert(..._B);
             [v, w] = probe(all);
         }
         return result;

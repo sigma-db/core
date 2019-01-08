@@ -3,10 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const constants_1 = require("./constants");
 const box_1 = require("./box");
 const index_1 = require("./index");
+const cds_1 = require("./cds");
 class Query {
     constructor(head, body) {
         this.head = head;
         this.body = body;
+        this.SAO = this.head.vars; // TODO
     }
     /**
      * Turns the string representation of a join query into an internal object representation
@@ -32,23 +34,20 @@ class Query {
         return new Query(head, body);
     }
     /**
-     * Generates the knowledge base for a given database D and query Q wrt. the schema inferred from Q and the given SAO.
-     * @param Q The query to infer the schema from
+     * Generates the knowledge base for a given database D
      * @param D The database
-     * @param SAO The splitting attribute order
      */
     gaps(D) {
-        const SAO = this.head.vars;
-        let B = [];
+        let C = new cds_1.CDS();
         this.body.forEach(atom => {
             let I = index_1.Index.create(D[atom.name]);
-            let _B = I.gaps().map(b => new box_1.Box(SAO.map(v => {
+            let _B = I.gaps().map(b => new box_1.Box(this.SAO.map(v => {
                 let pos = atom.vars.indexOf(v);
                 return pos < 0 ? constants_1.WILDCARD : b.at(pos);
             })));
-            Array.prototype.push.apply(B, _B);
+            C.insert(..._B);
         });
-        return B;
+        return C;
     }
 }
 exports.Query = Query;

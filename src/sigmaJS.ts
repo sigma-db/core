@@ -1,7 +1,7 @@
 ﻿import { Relation, Database, QueryFunction } from './types';
 import { Query } from './query';
 import { Box } from './box';
-import { cds, cover, insert } from './cds';
+import { CDS } from './cds';
 
 /**
  * Creates a database instance from the given specification
@@ -18,15 +18,15 @@ export function database(D: Database): Database {
  */
 export function query(Q: string): QueryFunction {
     const _Q: Query = Query.parse(Q);
-    const all: Box = Box.all(_Q.head.vars.length);     // a box covering the entire search space
+    const all: Box = Box.all(_Q.head.vars.length);     // a box covering the entire space
 
-    return (D: Database) => {
+    return (D: Database): Relation => {
         const result: Relation = [];
-        const A = cds();
-        const B = _Q.gaps(D);
+        const A: CDS = new CDS();
+        const B: CDS = _Q.gaps(D);
 
         let probe = (b: Box): [boolean, Box] => {
-            const a = cover(A, b);
+            const a = A.witness(b);
             if (!!a) {
                 return [true, a];
             }
@@ -53,19 +53,19 @@ export function query(Q: string): QueryFunction {
                 }
 
                 let w = w1.resolve(w2);
-                insert(A, w);
+                A.insert(w);
                 return [true, w];
             }
         }
 
         let [v, w] = probe(all);
         while (!v) {
-            let _B = B.filter(_b => _b.contains(w));
+            let _B = B.witnessAll(w);
             if (_B.length == 0) {
                 result.push(w.tuple());
                 _B = [w];
             }
-            insert(A, ..._B);
+            A.insert(..._B);
             [v, w] = probe(all);
         }
 

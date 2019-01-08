@@ -2,6 +2,7 @@
 import { WILDCARD } from "./constants";
 import { Box } from "./box";
 import { Index } from "./index";
+import { CDS } from "./cds";
 
 export interface Atom {
     name: string;
@@ -9,7 +10,11 @@ export interface Atom {
 }
 
 export class Query {
-    private constructor(public head: Atom, public body: Atom[]) { }
+    private SAO: string[];
+
+    private constructor(public head: Atom, public body: Atom[]) {
+        this.SAO = this.head.vars;  // TODO
+    }
 
     /**
      * Turns the string representation of a join query into an internal object representation
@@ -37,22 +42,19 @@ export class Query {
     }
 
     /**
-     * Generates the knowledge base for a given database D and query Q wrt. the schema inferred from Q and the given SAO.
-     * @param Q The query to infer the schema from
+     * Generates the knowledge base for a given database D
      * @param D The database
-     * @param SAO The splitting attribute order
      */
-    public gaps(D: Database): Box[] {
-        const SAO: string[] = this.head.vars;
-        let B: Box[] = [];
+    public gaps(D: Database): CDS {
+        let C: CDS = new CDS();
         this.body.forEach(atom => {
             let I = Index.create(D[atom.name]);
-            let _B = I.gaps().map(b => new Box(SAO.map(v => {
+            let _B = I.gaps().map(b => new Box(this.SAO.map(v => {
                 let pos = atom.vars.indexOf(v);
                 return pos < 0 ? WILDCARD : b.at(pos);
             })));
-            Array.prototype.push.apply(B, _B);
+            C.insert(..._B);
         });
-        return B;
+        return C;
     }
 }

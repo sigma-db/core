@@ -1,8 +1,10 @@
-﻿import { MAX, WILDCARD } from './constants';
-import { Tuple } from './types';
+﻿import { Tuple } from './types';
+import { MAX, WILDCARD } from './constants';
 
 export class Box {
     constructor(private b: number[]) { }
+
+    public forEach: typeof Array.prototype.forEach = Array.prototype.forEach.bind(this.b);
 
     /**
      * Creates a box covering the entire d-dimensional space
@@ -52,7 +54,7 @@ export class Box {
      * Splits a given box b along its first thick dimension
      * @param b The box to be split
      */
-    public split(): Box[] {
+    public split(): [Box, Box] {
         let thick = this.b.findIndex(i => (i & MAX) == 0);
         let b1 = [...this.b.slice(0, thick), this.b[thick] << 1, ...this.b.slice(thick + 1)];
         let b2 = [...this.b.slice(0, thick), (this.b[thick] << 1) + 1, ...this.b.slice(thick + 1)];
@@ -74,5 +76,9 @@ export class Box {
         });
         r[p] >>= 1;
         return new Box(r);
+    }
+
+    get length(): number {
+        return this.b.length;
     }
 }

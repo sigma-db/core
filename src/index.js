@@ -27,7 +27,7 @@ class Index {
             const root = (Math.log2(start ^ end) + 1) | 0; // index i of most significant bit s.t. start[j] == end[j] f.a. j > i
             const mask = (1 << root) - 1;
             if ((start & mask) == 0 && (end & mask) == mask) {
-                yield (start >> root) ^ (1 << (constants_1.L - root));
+                yield (start >> root) ^ (1 << (constants_1.EXP - root));
             }
             else {
                 yield* _dyadic(start, start | (mask >> 1));

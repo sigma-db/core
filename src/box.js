@@ -4,6 +4,7 @@ const constants_1 = require("./constants");
 class Box {
     constructor(b) {
         this.b = b;
+        this.forEach = Array.prototype.forEach.bind(this.b);
     }
     /**
      * Creates a box covering the entire d-dimensional space
@@ -69,6 +70,9 @@ class Box {
         });
         r[p] >>= 1;
         return new Box(r);
+    }
+    get length() {
+        return this.b.length;
     }
 }
 exports.Box = Box;
