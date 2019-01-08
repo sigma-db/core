@@ -3,3 +3,6 @@ bin/
 dist/
 obj/
 node_modules/
+
+*.njsproj
+*.sln
