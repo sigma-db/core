@@ -10,21 +10,21 @@ In particular, we do *not* aim to provide a thoroughly optimised implementation!
 * Since the project is written in [TypeScript](https://www.typescriptlang.org/), it needs to be *transpiled* into JavaScript first. To this end, download and install the TypeScript compiler using `npm install -g typescript`.
 
 ### Build
-* Build the project with `tsc` from within the project directory. This will generate corresponding JavaScript files in the `src` directory which Node.js can natively execute.
+* Change into the project directory and build the project with `tsc --target ES2015 --module CommonJS --outDir dist src/app.ts`. This will generate corresponding JavaScript files which Node.js can natively execute.
 
 ### Run
-* Start the sample application with `node src/app.js`.
+* Start the sample application with `node dist/app.js`.
 
 ## Example
-The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain [0, 1024), and a *bowtie*-query *Q* which is then executed on *D*.
+The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *bowtie*-query *Q* which is then executed on *D*.
 
 ```TypeScript
 import { database, query } from './sigmaJS';
 
 const D = database({
     R: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [72, 367, 591]],
-	S: [[591, 57]],
-	T: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [113, 367, 591]]
+    S: [[591, 57]],
+    T: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [113, 367, 591]]
 });
 const Q = query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
 const Ans = Q(D);
