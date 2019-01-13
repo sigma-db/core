@@ -1,4 +1,4 @@
-﻿import { Box } from './box';
+﻿import Box from './box';
 
 type KV<T> = [number, T];
 
@@ -60,7 +60,7 @@ class DyadicTrie<T> {
     }
 }
 
-export class CDS {
+export default class CDS {
     private data: DyadicTrie<any>;
 
     constructor() {

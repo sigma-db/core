@@ -4,5 +4,7 @@ dist/
 obj/
 node_modules/
 
+src/query/parsers/*
+
 *.njsproj
 *.sln

@@ -1,26 +1,11 @@
 ﻿import { database, query } from '../src/sigmaJS';
 
-function genDB(m) {
-    const E = [];
-
-    E.push([0, m + 1]);
-    E.push([m + 1, 2 * m + 2]);
-    E.push([2 * m + 2, 0]);
-
-    for (let i = 1; i <= m; i++) {
-        E.push([0, m + 1 + i]);
-        E.push([i, m + 1]);
-        E.push([m + 1, 2 * m + 2 + i]);
-        E.push([m + 1 + i, 2 * m + 2]);
-        E.push([2 * m + 2, i]);
-        E.push([2 * m + 2 + i, 0]);
-    }
-
-    return database({ R: E, S: E, T: E });
-}
-
-const D = genDB(100);
-const Q = query("Q(a, b, c) <- R(a, b), S(b, c), T(c, a)");
+const D = database({
+    R: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [72, 367, 591]],
+	S: [[591, 57]],
+	T: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [113, 367, 591]]
+});
+const Q = query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
 const Ans = Q(D);
 
 console.log(Ans);

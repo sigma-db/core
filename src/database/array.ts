@@ -1,8 +1,7 @@
-﻿import { Tuple, Relation } from './types';
-import { EXP, MIN, MAX, WILDCARD } from './constants';
-import { Box } from './box';
+﻿import { Relation, Tuple, EXP, MAX, MIN, WILDCARD } from '../common';
+import Box from '../box';
 
-export class Index {
+export default class Index {
     private constructor(private index: Relation) { }
 
     /**
@@ -43,7 +42,7 @@ export class Index {
 
         return [];
     }
-
+    
     /**
      * Computes all gap boxes inferrable from this index
      */

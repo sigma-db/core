@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2b6ffd9a-f0ed-4235-8e10-d99165627a78</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>samples\bowtie.ts</StartupFile>
+    <StartupFile>samples\triangle.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -49,33 +49,77 @@
   <ItemGroup>
     <Content Include="package.json" />
     <Content Include="README.md" />
-    <TypeScriptCompile Include="samples\bowtie.ts" />
+    <Content Include="resources\cq.pegjs">
+      <SubType>Code</SubType>
+    </Content>
+    <Content Include="resources\sql.pegjs" />
+    <Content Include="tsconfig.json" />
+    <TypeScriptCompile Include="samples\triangle.ts" />
     <TypeScriptCompile Include="src\box.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\cds.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\index.ts">
+    <TypeScriptCompile Include="src\common\index.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\constants.ts">
+    <TypeScriptCompile Include="src\database\database.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\query.ts">
+    <TypeScriptCompile Include="src\database\btree.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\database\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\database\array.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\common\constants.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query\cq-query.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query\parsers\cq.d.ts" />
+    <TypeScriptCompile Include="src\query\parsers\sql.d.ts" />
+    <TypeScriptCompile Include="src\query\query-type.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query\query.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\query\sql-query.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\sigmaJS.ts" />
-    <TypeScriptCompile Include="src\types.ts">
+    <TypeScriptCompile Include="src\common\types.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="samples\triangle.ts">
+    <TypeScriptCompile Include="samples\stress.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="build\" />
+    <Folder Include="resources\" />
     <Folder Include="samples\" />
     <Folder Include="src\" />
+    <Folder Include="src\database\" />
+    <Folder Include="src\common\" />
+    <Folder Include="src\query\" />
+    <Folder Include="src\query\parsers\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="build\grammar.js">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="src\query\parsers\cq.js" />
+    <Compile Include="src\query\parsers\sql.js" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

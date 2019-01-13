@@ -1,7 +1,6 @@
-﻿import { Tuple } from './types';
-import { MAX, WILDCARD } from './constants';
+﻿import { Tuple, MAX, WILDCARD } from './common';
 
-export class Box {
+export default class Box {
     constructor(private b: number[]) { }
 
     public forEach: typeof Array.prototype.forEach = Array.prototype.forEach.bind(this.b);
@@ -29,7 +28,7 @@ export class Box {
     }
 
     /**
-     * Returns this boxes value in a given dimension.
+     * Returns this boxes value in a given dimension
      * @param pos The dimension.
      */
     public at(pos: number): number {

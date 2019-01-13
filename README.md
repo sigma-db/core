@@ -10,13 +10,14 @@ In particular, we do *not* aim to provide a thoroughly optimised implementation!
 * Since the project is written in [TypeScript](https://www.typescriptlang.org/), it needs to be *transpiled* into JavaScript first. To this end, download and install the TypeScript compiler using `npm install -g typescript`.
 
 ### Build
-* To build the library and the accompanying sample applications, run `tsc --target ES2015 --module CommonJS --outDir dist samples/bowtie.ts`.
+* Run `npm install` to download build dependencies such as the parser generator [PEG.js](https://pegjs.org/).
+* To build the library and the accompanying sample applications, run `npm run build`.
 
 ### Run
-* Run the sample application using `node dist/samples/bowtie.js`.
+* Run the sample application using `node ./dist/samples/triangle.js`.
 
 ## Example
-The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *bowtie*-query *Q* which is then executed on *D*.
+The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *triangle*-query *Q* which is then executed on *D*.
 
 ```TypeScript
 import { database, query } from './sigmaJS';

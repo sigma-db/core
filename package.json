@@ -1,11 +1,16 @@
 {
   "name": "sigma-js",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Implementation of the Tetris join algorithm by Khamis et al.",
   "author": {
     "name": "David Luis Wiegandt"
   },
   "devDependencies": {
-    "@types/node": "^8.0.14"
-  }
+    "@types/node": "^8.0.14",
+    "pegjs": "^0.11.0-dev.325"
+  },
+  "scripts": {
+    "build": "node build/grammar.js ./resources ./src/query/parsers && tsc"
+  },
+  "dependencies": {}
 }
