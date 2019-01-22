@@ -1,7 +1,8 @@
-﻿import { Tuple, MAX, WILDCARD } from './common';
+﻿import { MAX, WILDCARD } from './constants';
+import { Tuple } from './tuple';
 
-export default class Box {
-    constructor(private b: number[]) { }
+export class Box {
+    constructor(protected b: number[]) { }
 
     public forEach: typeof Array.prototype.forEach = Array.prototype.forEach.bind(this.b);
 
@@ -24,7 +25,7 @@ export default class Box {
      * Transforms the box into a tuple
      */
     public tuple(): Tuple {
-        return this.b.map(i => i ^ MAX);    // remove prepended '1' for result tuple
+        return Tuple.from(this.b.map(i => i ^ MAX));    // remove prepended '1' for result tuple
     }
 
     /**

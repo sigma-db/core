@@ -1,10 +1,10 @@
-start = _ q:query _ { return q }
+start = _ q:query _ semicolon { return q }
 query = q:select_stmt { return { type: "select", query: q } }
       / q:use_stmt { return { type: "use", query: q } }
 
 /* Statements */
-select_stmt "select statement" = SELECT __ s:sel_list f:(__ FROM __ from_list (__ WHERE __ cond_list)?)? _ semicolon { return {select: s, from: f[3], where: f[4][3]} }
-use_stmt    "use statement"    = USE __ db_name _ semicolon
+select_stmt "select statement" = SELECT __ s:sel_list f:(__ FROM __ from_list (__ WHERE __ cond_list)?)? { return {select: s, from: f[3], where: f[4][3]} }
+use_stmt    "use statement"    = USE __ d:db_name { return { database: d } }
 
 /* Clauses */
 sel_list  "selection list"     = first:sel rest:(_ comma _ @sel)* { return { type: "list", columns: [first, ...rest]} } 
@@ -26,13 +26,16 @@ id         "identifier"    = [A-Za-z_][A-Za-z0-9_]* { return text() }
                            / lbracket t:[A-Za-z0-9_ ]+ rbracket { return t.join("") }
 
 /* Keywords */
-AND    "AND"    = "AND" / "and"
-AS     "AS"     = "AS" / "as"
-FROM   "FROM"   = "FROM" / "from"
-SELECT "SELECT" = "SELECT" / "select"
+AND    "AND"    = "AND"i
+AS     "AS"     = "AS"i
+FROM   "FROM"   = "FROM"i
+INSERT "INSERT" = "INSERT"i
+INTO   "INTO"   = "INTO"i
+SELECT "SELECT" = "SELECT"i
 STAR   "*"      = "*"
-USE    "USE"    = "USE" / "use"
-WHERE  "WHERE"  = "WHERE" / "where"
+USE    "USE"    = "USE"i
+VALUES "VALUES" = "VALUES"i
+WHERE  "WHERE"  = "WHERE"i
 
 /* Operators */
 dot      "." = "."

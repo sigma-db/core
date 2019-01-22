@@ -1,26 +1,49 @@
-﻿import QueryType from "./query-type";
-import CQQuery from "./cq-query";
+﻿import CQQuery from "./cq-query";
 import SQLQuery from "./sql-query";
 
-export default abstract class Query {
-    /**
-     * Turns the string representation of a join query into an internal object representation
-     * @param Q The query to parse
-     * @param lang The language of the query. Defaults to CQ.
-     */
-    public static parse(Q: string, lang: QueryType): Query {
-        switch (lang) {
-            case QueryType.CQ:
-                return CQQuery.parse(Q);
+export enum QueryLang { CQ, SQL };
+export enum QueryType { CREATE, INSERT, SELECT };
 
-            case QueryType.SQL:
-                return SQLQuery.parse(Q);
+export abstract class Query {
+    /**
+     * Turns the string representation of a query into an internal object representation
+     * @param query The query to parse
+     * @param lang The language of the query
+     */
+    public static parse(query: string, lang: QueryLang): Query {
+        switch (lang) {
+            case QueryLang.CQ: return CQQuery.parse(query);
+            case QueryLang.SQL: return SQLQuery.parse(query);
         }
     }
 
-    public abstract get SAO(): string[];
+    public static isCreate(q: Query): q is CreateQuery {
+        return q.type === QueryType.CREATE;
+    }
 
-    public abstract get relations(): string[];
+    public static isInsert(q: Query): q is InsertQuery {
+        return q.type === QueryType.INSERT;
+    }
 
-    public abstract variables(rel: string): string[];
+    public static isSelect(q: Query): q is SelectQuery {
+        return q.type === QueryType.SELECT;
+    }
+
+    public abstract get type(): QueryType;
+}
+
+export interface CreateQuery extends Query {
+    relation: string;
+    attributes: string[];
+}
+
+export interface InsertQuery extends Query {
+    relation: string;
+    tuple: string[];
+}
+
+export interface SelectQuery extends Query {
+    SAO: string[];
+    relations: string[];
+    variables(rel: string): string[];
 }

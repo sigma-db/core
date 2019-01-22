@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2b6ffd9a-f0ed-4235-8e10-d99165627a78</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>samples\triangle.ts</StartupFile>
+    <StartupFile>samples\client.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -54,31 +54,34 @@
     </Content>
     <Content Include="resources\sql.pegjs" />
     <Content Include="tsconfig.json" />
-    <TypeScriptCompile Include="samples\triangle.ts" />
-    <TypeScriptCompile Include="src\box.ts">
+    <TypeScriptCompile Include="samples\client.ts" />
+    <TypeScriptCompile Include="src\database\box.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\cds.ts">
+    <TypeScriptCompile Include="src\database\cds.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\common\index.ts">
-      <SubType>Code</SubType>
-    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\database\constants.ts" />
     <TypeScriptCompile Include="src\database\database.ts">
-      <SubType>Code</SubType>
-    </TypeScriptCompile>
-    <TypeScriptCompile Include="src\database\btree.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\database\index.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\database\array.ts">
+    <TypeScriptCompile Include="src\database\relation.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\common\constants.ts">
+    <TypeScriptCompile Include="src\database\transaction.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="src\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\util\index.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="src\util\skip-list.ts" />
+    <TypeScriptCompile Include="src\database\tuple.ts" />
     <TypeScriptCompile Include="src\query\cq-query.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
@@ -87,20 +90,16 @@
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\query\parsers\cq.d.ts" />
     <TypeScriptCompile Include="src\query\parsers\sql.d.ts" />
-    <TypeScriptCompile Include="src\query\query-type.ts">
-      <SubType>Code</SubType>
-    </TypeScriptCompile>
     <TypeScriptCompile Include="src\query\query.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="src\query\sql-query.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="src\sigmaJS.ts" />
-    <TypeScriptCompile Include="src\common\types.ts">
+    <TypeScriptCompile Include="src\util\dyadic-trie.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="samples\stress.ts">
+    <TypeScriptCompile Include="src\util\comparable.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
   </ItemGroup>
@@ -110,7 +109,7 @@
     <Folder Include="samples\" />
     <Folder Include="src\" />
     <Folder Include="src\database\" />
-    <Folder Include="src\common\" />
+    <Folder Include="src\util\" />
     <Folder Include="src\query\" />
     <Folder Include="src\query\parsers\" />
   </ItemGroup>

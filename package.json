@@ -12,5 +12,6 @@
   "scripts": {
     "build": "node build/grammar.js ./resources ./src/query/parsers && tsc"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "main": "dist/sigmaJS.js"
 }
