@@ -20,15 +20,23 @@ In particular, we do *not* aim to provide a thoroughly optimised implementation!
 The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *triangle*-query *Q* which is then executed on *D*.
 
 ```TypeScript
-import { database, query } from './sigmaJS';
+import Database from '../src';
 
-const D = database({
-    R: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [72, 367, 591]],
-    S: [[591, 57]],
-    T: [[4, 603, 469], [15, 184, 631], [46, 296, 69], [46, 539, 64], [56, 549, 488], [57, 725, 72], [57, 819, 234], [57, 819, 640], [57, 999, 281], [113, 367, 591]]
-});
-const Q = query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
-const Ans = Q(D);
+const db = Database.open("/path/to/database");
 
-console.log(Ans);
+db.createRelation("R", ["A", "B", "C"]);
+db.createRelation("S", ["D", "E"]);
+db.createRelation("T", ["F", "G", "H"]);
+
+db.insert("R", [4, 603, 469]);
+db.insert("R", [72, 367, 591]);
+db.insert("S", [591, 57]);
+db.insert("T", [56, 549, 488]);
+db.insert("T", [57, 725, 72]);
+db.insert("T", [57, 819, 234]);*/
+
+const Ans = db.query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
+console.log(Ans.toString());
+
+db.close();
 ```
