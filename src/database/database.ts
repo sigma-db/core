@@ -8,6 +8,11 @@ import { Tuple } from './tuple';
 
 type Schema = { [name: string]: string[] };
 
+export interface QueryResult {
+    success: boolean;
+    result?: Relation;
+}
+
 export class Database {
     private readonly relations: { [name: string]: Relation } = {};
 
@@ -71,7 +76,7 @@ export class Database {
         if (Query.isCreate(q)) {
             this.createRelation(q.relation, q.attributes);
         } else if (Query.isInsert(q)) {
-            this.insert(q.relation, q.tuple.map(parseInt));
+            this.insert(q.relation, q.tuple.map(x => parseInt(x)));
         } else if (Query.isSelect(q)) {
             return this.select(q);
         }

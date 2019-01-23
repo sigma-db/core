@@ -33,7 +33,7 @@ db.insert("R", [72, 367, 591]);
 db.insert("S", [591, 57]);
 db.insert("T", [56, 549, 488]);
 db.insert("T", [57, 725, 72]);
-db.insert("T", [57, 819, 234]);*/
+db.insert("T", [57, 819, 234]);
 
 const Ans = db.query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
 console.log(Ans.toString());

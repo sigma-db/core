@@ -10,9 +10,14 @@ interface QueryCQ {
     type: "create" | "insert" | "select";
 }
 
+interface ColumnSpec {
+    name: string;
+    dataType: "int" | "varchar" | "bool";
+}
+
 interface CreateCQ extends QueryCQ {
     rel: string;
-    attrs: string[];
+    attrs: ColumnSpec[];
 }
 
 interface InsertCQ extends QueryCQ {
@@ -36,7 +41,7 @@ export default class CQQuery {
             return <CreateQuery>{
                 type: QueryType.CREATE,
                 relation: _q.rel,
-                attributes: _q.attrs
+                attributes: _q.attrs.map(attr => attr.name)
             };
         } else if (isInsertCQ(_q)) {
             return <InsertQuery>{
