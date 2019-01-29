@@ -2,23 +2,51 @@
 import { Box } from "./box";
 import { EXP, MAX, MIN, WILDCARD } from "./constants";
 import { Tuple } from "./tuple";
+import { AttrSpec } from "../query";
+
+const TypeConstructors = {
+    "int": Number,
+    "string": (x: bigint, width: number) => {
+        const result = new Array<number>(width);
+        let pos = 0;
+        while (x > 0) {
+            result[pos++] = Number(x & 0xFFn);
+            x >>= 8n;
+        }
+        return String.fromCharCode(...result.slice(0, pos));
+    },
+    "char": String.fromCharCode,
+    "bool": Boolean
+};
+
+export class DuplicateEntryError extends Error {
+    constructor(private t: Tuple) {
+        super();
+    }
+    
+    public get tuple(): Tuple {
+        return this.t;
+    }
+}
 
 export class Relation {
     private tuples: SkipList<Tuple>;
 
-    private constructor(private _attrs: string[]) {
+    private constructor(private _attrs: AttrSpec[], private throwsOnDuplicate: boolean) {
         this.tuples = new SkipList<Tuple>(4, 0.25);
     }
 
-    public static create(attrs: string[]): Relation {
-        return new Relation(attrs);
+    public static create(attrs: AttrSpec[], throwsOnDuplicate: boolean = true): Relation {
+        return new Relation(attrs, throwsOnDuplicate);
     }
 
-    public insert(t: Tuple): boolean {
-        return this.tuples.insert(t);
+    public insert(t: Tuple) {
+        if (!this.tuples.insert(t) && this.throwsOnDuplicate) {
+            throw new DuplicateEntryError(t);
+        }
     }
 
-    public get attrs(): string[] {
+    public get attrs(): AttrSpec[] {
         return this._attrs;
     }
 
@@ -27,7 +55,7 @@ export class Relation {
     }
 
     public toString(): string {
-        const result = [this._attrs.join(", ")];
+        const result = [this._attrs.map(attr => attr.name).join(", ")];
         for (let t of this.tuples) {
             result.push(t.toString());
         }

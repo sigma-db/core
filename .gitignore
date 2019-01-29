@@ -1,10 +1,5 @@
-.vs/
-bin/
+.vscode/
 dist/
-obj/
 node_modules/
 
-src/query/parsers/*
-
-*.njsproj
-*.sln
+lib/query/parsers/*.js

@@ -1,42 +1,66 @@
 ﻿# sigmaJS
-This is an implementation of the *Tetris* join algorithm introduced in [Joins via Geometric Resolutions: Worst Case and Beyond](http://doi.org/10.1145/2967101) by *Khamis et al*.
-The goal is to show that the algorithm admits a straightforward implementation after working out some details left unspecified in the paper itself.
-In particular, we do *not* aim to provide a thoroughly optimised implementation!
+SigmaJS is a relational database engine that aims to incorporate some of the latest findings in database theory.
+While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.
+One such approach is the *Tetris* join algorithm introduced in [Joins via Geometric Resolutions: Worst Case and Beyond](http://doi.org/10.1145/2967101) by *Khamis et al*, which we implement to evaluate joins.
+Please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations).
 
 ## Setup
 
 ### Prerequisites
-* If not already present, download and install [Node.js](https://nodejs.org). Depending on your operating system, the native package manager might be preferrable for the retrieval and installation of Node.js.
-* Since the project is written in [TypeScript](https://www.typescriptlang.org/), it needs to be *transpiled* into JavaScript first. To this end, download and install the TypeScript compiler using `npm install -g typescript`.
+* If not already present, download and install [Node.js](https://nodejs.org). Depending on your operating system, the native package manager might be preferrable for the retrieval and installation.
+* Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
 
 ### Build
-* Run `npm install` to download build dependencies such as the parser generator [PEG.js](https://pegjs.org/).
-* To build the library and the accompanying sample applications, run `npm run build`.
+* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
+* To build the library and the accompanying client application, run `npm run build`.
 
 ### Run
-* Run the sample application using `node ./dist/samples/triangle.js`.
+* Start the command line interface using `npm run db -- </path/to/database>`.
 
-## Example
-The following script creates a database *D* with three relations *R*, *S* and *T*, each of which with some tuples over the domain *[0, 1024)*, and a *triangle*-query *Q* which is then executed on *D*.
+## Usage
+The database engine can be accessed in two ways, either by the provided command line interface, or by directly using its exposed API.
 
-```TypeScript
-import Database from '../src';
+### Command Line Interface
+Our database engine supports an extension of [conjunctive queries](https://en.wikipedia.org/wiki/Conjunctive_query#Datalog) that is more concise when formulating queries against complex schemata in realistic scenarios.
+
+We discern three types of queries, whose syntax we outline by example:
+
+1. To **create** a new relation *Employee* with attributes *id*, *salary*, *sex* and *boss* of types `int`, `int`, `char` and `int`, respectively, write `Employee: (id: int, salary: int, sex: char, boss: int)`. Supported data types are `int`, `char` and `bool`.
+2. To **insert** a tuple into the (existing) relation *Employee*, write `Employee(id=1, salary=4200, sex='f', boss=0)`. Alternatively, the less verbose syntax `Employee(1, 4200, 'f', 0)` can be used. Please note that in the latter case, the order of the attributes matters, while it does not in the former.
+3. To **select** all employees' IDs whose salary is 4,200, write either `(empId=x) <- Employee(id=x, salary=4200)` or `(empId=x) <- Employee(x, 4200, y, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
+
+### Library
+The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all division heads with at least one employee earning 4,200.
+
+tbd.
+
+<!-- ```TypeScript
+import Database from "sigma";
+import { INT, CHAR } from "sigma/types";
 
 const db = Database.open("/path/to/database");
 
-db.createRelation("R", ["A", "B", "C"]);
-db.createRelation("S", ["D", "E"]);
-db.createRelation("T", ["F", "G", "H"]);
+db.createRelation("Employee", [ INT("id"), INT("salary"), CHAR("sex"), INT("divId") ]);
+db.createRelation("Division", [ INT("id"), CHAR("short"), INT("head") ]);
 
-db.insert("R", [4, 603, 469]);
-db.insert("R", [72, 367, 591]);
-db.insert("S", [591, 57]);
-db.insert("T", [56, 549, 488]);
-db.insert("T", [57, 725, 72]);
-db.insert("T", [57, 819, 234]);
+db.insert("Employee", [0, 603, 469]);
+db.insert("Employee", [1, 367, 591]);
+db.insert("Employee", [2, 549, 488]);
+db.insert("Division", [0, 725, 72]);
+db.insert("Division", [1, 819, 234]);
 
-const Ans = db.query("Q(a, b, c, d, e) <- R(a, b, c), S(c, d), T(d, e, a)");
+const Ans = db.query("(head=x) <- Employee(salary=4200, divId=z), Division(id=z, head=x)");
 console.log(Ans.toString());
 
 db.close();
-```
+``` -->
+
+## Limitations
+We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
+
+For instance, as of now, we do *not* support:
+* string-valued attributes
+* parallel/distributed query evaluation
+* aggregation queries
+* concurrent access
+* ...and much more.

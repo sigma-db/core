@@ -1,17 +1,20 @@
 {
-  "name": "sigma-js",
-  "version": "0.2.1",
-  "description": "Implementation of the Tetris join algorithm by Khamis et al.",
+  "name": "sigma",
+  "version": "0.3",
+  "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "author": {
     "name": "David Luis Wiegandt"
   },
   "devDependencies": {
     "@types/node": "^8.0.14",
-    "pegjs": "^0.11.0-dev.325"
+    "pegjs": "^0.11.0-dev.325",
+    "tslint": "^5.12.1",
+    "typescript": "^3.2.4"
   },
   "scripts": {
     "build": "node build/grammar.js ./resources ./src/query/parsers && tsc"
   },
   "dependencies": {},
-  "main": "dist/sigmaJS.js"
+  "bin": "dist/bin/client.js",
+  "main": "dist/lib/index.js"
 }

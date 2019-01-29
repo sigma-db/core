@@ -1,8 +1,8 @@
-﻿import Database from '../src';
+﻿import Database from '../lib';
 import { createInterface } from 'readline';
 
 if (process.argv.length != 3) {
-    console.log(`Invalid parameters.\r\nUsage: node ${process.argv[1]} <database>`);
+    console.log(`Invalid parameters.\r\nUsage: node ${process.argv[1]} </path/to/database>`);
     process.exit(1);
 }
 
@@ -13,11 +13,13 @@ const repl = createInterface({
     prompt: '> '
 });
 
+db.query('Q(id=y, name="xyz") <- Emp(id=y, divId=z), Div(id=z, name=12)');
+
 repl.prompt();
 repl.on('line', input => {
     try {
-        const Ans = db.query(input);
-        console.log(!!Ans ? Ans.toString() : "Done");
+        const result = db.query(input);
+        console.log(!!result ? result.toString() : "Done");
     } catch (e) {
         console.log(e.message);
     }

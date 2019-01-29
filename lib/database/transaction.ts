@@ -2,6 +2,10 @@
 
 export enum TransactionType { CREATE, INSERT };
 
+export interface ILoggable {
+    size(): number;
+}
+
 interface ITransaction {
     type: TransactionType;
 }

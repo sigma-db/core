@@ -1,12 +1,10 @@
-﻿import { Query, SelectQuery, QueryLang } from '../query';
+﻿import { Query, QueryLang, SelectQuery, Schema, AttrSpec } from '../query';
 import { Box } from './box';
 import { CDS } from './cds';
 import { WILDCARD } from './constants';
-import { Relation } from './relation';
+import { Relation, DuplicateEntryError } from './relation';
 import { Transaction, TransactionLog } from './transaction';
 import { Tuple } from './tuple';
-
-type Schema = { [name: string]: string[] };
 
 export interface QueryResult {
     success: boolean;
@@ -50,7 +48,7 @@ export class Database {
      * @param name The name of the relation
      * @param attrs The attributes of the relation
      */
-    public createRelation(name: string, attrs: string[]): void {
+    public createRelation(name: string, attrs: AttrSpec[]): void {
         this._createRelation(name, attrs);
         this.log.write(Transaction.newCreate(name, attrs));
     }
@@ -69,21 +67,25 @@ export class Database {
      * Evaluates the given query on this database and returns the resulting relation
      * @param query The query
      * @param lang The language of the query. Defaults to CQ.
-     * @todo Infer optimal SAO from Q's query graph using a tree decomposition
      */
     public query(query: string, lang: QueryLang = QueryLang.CQ): Relation {
         const q = Query.parse(query, lang);
         if (Query.isCreate(q)) {
-            this.createRelation(q.relation, q.attributes);
+            this.createRelation(q.rel, q.attrs);
         } else if (Query.isInsert(q)) {
-            this.insert(q.relation, q.tuple.map(x => parseInt(x)));
+            this.insert(q.rel, q.tuple);
         } else if (Query.isSelect(q)) {
             return this.select(q);
         }
     }
 
+    /**
+     * Evaluates a join query using the tetris join algorithm.
+     * @param q The query to evaluate.
+     * @todo Infer optimal SAO from Q's query graph using a tree decomposition
+     */
     private select(q: SelectQuery): Relation {
-        const R: Relation = Relation.create(new Array(q.SAO.length).fill("X"));
+        const R: Relation = Relation.create(q.export, false);
         const A: CDS = new CDS();
         const all: Box = Box.all(q.SAO.length); // a box covering the entire space
 
@@ -134,25 +136,30 @@ export class Database {
         return R;
     }
 
-    private _createRelation(name: string, attrs: string[]): void {
+    private _createRelation(name: string, attrs: AttrSpec[]): void {
         if (!this.relations[name]) {
-            this.relations[name] = Relation.create(attrs);
+            this.relations[name] = Relation.create(attrs[0]);
         } else {
             throw new Error(`Relation "${name}" already exists.`);
         }
     }
 
     private _insert(rel: string, tuple: number[]) {
-        const t = Tuple.from(tuple);
-        const success = this.relations[rel].insert(t);
-        if (!success) {
-            throw new Error(`Relation "${rel}" already contains "${t.toString()}".`);
+        try {
+            this.relations[rel].insert(Tuple.from(tuple));
+        } catch (e) {
+            if (e instanceof DuplicateEntryError) {
+                throw new Error(`Relation "${rel}" already contains "${e.tuple.toString()}".`);
+            } else {
+                throw e;
+            }
         }
     }
 
     private gaps(q: SelectQuery, t: Tuple): Box[] {
         let C: Box[] = new Array<Box>();
-        q.relations.forEach(rel => {
+        q.atoms.forEach(atom => {
+            const { rel, vals } = atom;
             let _t = Tuple.from(q.variables(rel).map(v => t.at(q.SAO.indexOf(v))));
             let B = this.relations[rel].gaps(_t).map(b => new Box(q.SAO.map(v => {
                 let pos = q.variables(rel).indexOf(v);

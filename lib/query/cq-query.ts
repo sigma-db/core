@@ -1,60 +1,40 @@
-﻿import { parse } from "./parsers/cq";
-import { CreateQuery, InsertQuery, Query, QueryType, SelectQuery } from "./query";
+﻿import { parse, ICreateCQ, IInsertCQ, ISelectCQ, ICQ, QueryType, TupleType, INamedValue, Literal } from "./parsers/cq";
+import { Query, CreateQuery, InsertQuery, SelectQuery } from "./query";
+import { Tuple } from "../database";
 
-interface Atom {
-    name: string;
-    vars: string[];
-}
+export const isCreateCQ = (q: ICQ): q is ICreateCQ => q.type === QueryType.CREATE;
+export const isInsertCQ = (q: ICQ): q is IInsertCQ => q.type === QueryType.INSERT;
+export const isSelectCQ = (q: ICQ): q is ISelectCQ => q.type === QueryType.SELECT;
 
-interface QueryCQ {
-    type: "create" | "insert" | "select";
-}
+export const isVariableValue = (v: Value): v is VariableValue => v.type === ValueType.VARIABLE;
+export const isLiteralValue = (v: Value): v is LiteralValue => v.type === ValueType.LITERAL;
 
-interface ColumnSpec {
-    name: string;
-    dataType: "int" | "varchar" | "bool";
-}
-
-interface CreateCQ extends QueryCQ {
-    rel: string;
-    attrs: ColumnSpec[];
-}
-
-interface InsertCQ extends QueryCQ {
-    rel: string;
-    tuple: string[];
-}
-
-interface SelectCQ extends QueryCQ {
-    head: Atom;
-    body: Atom[];
-}
-
-const isCreateCQ = (q: QueryCQ): q is CreateCQ => q.type === "create";
-const isInsertCQ = (q: QueryCQ): q is InsertCQ => q.type === "insert";
-const isSelectCQ = (q: QueryCQ): q is SelectCQ => q.type === "select";
+export const isNamedTuple = (t: Tuple): a is Named => a.type === TupleType.NAMED;
+export const isUnnamedAtom = (a: Atom): a is UnnamedAtom => a.type === TupleType.UNNAMED;
 
 export default class CQQuery {
     public static parse(q: string): Query {
-        const _q = <QueryCQ>parse(q);
+        const _q = parse(q);
         if (isCreateCQ(_q)) {
             return <CreateQuery>{
                 type: QueryType.CREATE,
-                relation: _q.rel,
-                attributes: _q.attrs.map(attr => attr.name)
+                rel: _q.rel,
+                attrs: _q.attrs
             };
         } else if (isInsertCQ(_q)) {
+            const tuple = _q.tuple.type == TupleType.NAMED ? (<INamedValue<Literal>[]>_q.tuple.vals).map()
             return <InsertQuery>{
                 type: QueryType.INSERT,
-                relation: _q.rel,
-                tuple: _q.tuple
+                rel: _q.rel,
+                tuple: _q.tuple.type == TupleType.UNNAMED ? _q.tuple.vals.map(v => v.val)
             };
         } else if (isSelectCQ(_q)) {
             return <SelectQuery>{
                 type: QueryType.SELECT,
-                SAO: _q.head.vars,
-                relations: _q.body.map(atom => atom.name),
-                variables: rel => _q.body.find(atom => atom.name === rel).vars
+                name: _q.name,
+                attrs: _q.attrs,
+                SAO: _q.head.vals.map(v => (<VariableValue>v.val).val),
+                atoms: _q.body.map(atom => <Atom>{rel: atom.rel})
             };
         }
     }
