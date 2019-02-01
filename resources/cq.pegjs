@@ -34,20 +34,20 @@ id        "identifier" = [A-Za-z_][A-Za-z0-9_]* { return text() }
                        / lbracket t:[A-Za-z0-9_ ]+ rbracket { return t.join("") }
 
 /* literals */
-literal  "literal"        = lint / lstring/ lchar / lbool
-lint     "number literal" = [1-9][0-9]* { return Number(text()) }
-lstring  "string literal" = dquote s:[^\"] dquote { return [...s].map(c => BigInt(c.charCodeAt(0))).reduce((p, c) => (p << 8n) + c, 0n) }
-lchar    "char literal"   = squote s:[^\'] squote { return s.charCodeAt(0) }
-lbool    "bool literal"   = ltrue / lfalse
-ltrue    "true"           = "true"i { return 1 }
-lfalse   "false"          = "false"i { return 0 }
+literal  "literal"         = lint / lstring/ lchar / lbool
+lint     "integer literal" = [1-9][0-9]* { return Number(text()) }
+lstring  "string literal"  = dquote s:[^\"]* dquote { return [...s].map(c => Number(c.charCodeAt(0))).reduceRight((p, c) => (p << 8) + c, 0) }
+lchar    "char literal"    = squote s:[^\'] squote { return s.charCodeAt(0) }
+lbool    "bool literal"    = ltrue / lfalse
+ltrue    "true"            = "true"i { return 1 }
+lfalse   "false"           = "false"i { return 0 }
 
 /* types */
-type     "type"   = tint / tstring / tchar / tbool
-tint     "int"    = ("integer"i / "int"i) w:(_ lbrace _ @lint _ rbrace)? { return { type: "int", width: w || 4 } }
-tstring  "string" = "string"i w:(_ lbrace _ @lint _ rbrace)? { return { type: "string", width: w || 256 } }
-tchar    "char"   = "char"i { return { type: "char", width: 1 } }
-tbool    "bool"   = "bool"i { return { type: "bool", width: 1 } }
+type     "type"    = tint / tstring / tchar / tbool
+tint     "integer" = ("integer"i / "int"i) w:(_ lbrace _ @lint _ rbrace)? { return { type: "int", width: w || 4 } }
+tstring  "string"  = "string"i w:(_ lbrace _ @lint _ rbrace)? { return { type: "string", width: w || 256 } }
+tchar    "char"    = "char"i { return { type: "char", width: 1 } }
+tbool    "bool"    = "bool"i { return { type: "bool", width: 1 } }
 
 /* tokens */
 larrow   "<-" = "<-"

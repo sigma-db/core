@@ -1,5 +1,5 @@
 ﻿import { parse } from "./parsers/sql";
-import { Query } from "./query";
+import { IQuery } from "./iquery";
 
 type Identifier = string;
 
@@ -43,8 +43,8 @@ interface ParseResult {
     query: SelectStatement;
 }
 
-export default class SQLQuery {
-    public static parse(Q: string): Query {
+export class SQLQuery {
+    public static parse(Q: string): IQuery {
         const { type, query } = <ParseResult>parse(Q);
 
         if (type == "use") {

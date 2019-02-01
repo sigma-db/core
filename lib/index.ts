@@ -1,1 +1,2 @@
-﻿export { Database as default } from './database';
+﻿export { Database } from './database';
+export { Query } from './query';

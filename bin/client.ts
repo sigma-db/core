@@ -1,4 +1,4 @@
-﻿import Database from '../lib';
+﻿import { Database, Query } from '../lib';
 import { createInterface } from 'readline';
 
 if (process.argv.length != 3) {
@@ -13,12 +13,11 @@ const repl = createInterface({
     prompt: '> '
 });
 
-db.query('Q(id=y, name="xyz") <- Emp(id=y, divId=z), Div(id=z, name=12)');
-
 repl.prompt();
 repl.on('line', input => {
     try {
-        const result = db.query(input);
+        const query = Query.parse(input);
+        const result = query.execute(db);
         console.log(!!result ? result.toString() : "Done");
     } catch (e) {
         console.log(e.message);

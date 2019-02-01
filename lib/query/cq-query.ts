@@ -1,41 +1,80 @@
-﻿import { parse, ICreateCQ, IInsertCQ, ISelectCQ, ICQ, QueryType, TupleType, INamedValue, Literal } from "./parsers/cq";
-import { Query, CreateQuery, InsertQuery, SelectQuery } from "./query";
-import { Tuple } from "../database";
+﻿import { Database, Relation } from "../database";
+import { IComparable } from "../util";
+import { ICreateCQ, IInsertCQ, ISelectCQ, parse, ITuple, INamedValue } from "./parsers/cq";
+import { IQuery } from "./iquery";
 
-export const isCreateCQ = (q: ICQ): q is ICreateCQ => q.type === QueryType.CREATE;
-export const isInsertCQ = (q: ICQ): q is IInsertCQ => q.type === QueryType.INSERT;
-export const isSelectCQ = (q: ICQ): q is ISelectCQ => q.type === QueryType.SELECT;
+enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select" }
+enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 
-export const isVariableValue = (v: Value): v is VariableValue => v.type === ValueType.VARIABLE;
-export const isLiteralValue = (v: Value): v is LiteralValue => v.type === ValueType.LITERAL;
+class CQVariable implements IComparable<CQVariable> {
+    constructor(private id: number) { }
 
-export const isNamedTuple = (t: Tuple): a is Named => a.type === TupleType.NAMED;
-export const isUnnamedAtom = (a: Atom): a is UnnamedAtom => a.type === TupleType.UNNAMED;
+    public compareTo(other: CQVariable): number {
+        return this.id - other.id;
+    }
+}
 
-export default class CQQuery {
-    public static parse(q: string): Query {
+class CQLiteral {
+    private constructor(private _value: number) { }
+
+    public static from(value: number): CQLiteral {
+        return new CQLiteral(value);
+    }
+
+    public get value(): number {
+        return this._value;
+    }
+}
+
+class CQVariableSet {
+    private count: number = 0;
+    private vars: { [name: string]: CQVariable } = {};
+
+    public get(name: string = `@${this.count}`): CQVariable {
+        this.vars[name] = this.vars[name] || new CQVariable(this.count++);
+        return this.vars[name];
+    }
+}
+
+class CreateCQ implements IQuery {
+    constructor(private query: ICreateCQ) { }
+
+    public execute(db: Database): Relation | void {
+        db.createRelation(this.query.rel, this.query.attrs);
+    }
+}
+
+class InsertCQ implements IQuery {
+    constructor(private query: IInsertCQ) { }
+
+    public execute(db: Database): Relation | void {
+        if (this.query.tuple.type == TupleType.UNNAMED) {
+            const tuple = this.query.tuple;
+            const raw = tuple.vals.map(v => v.val);
+            db.insert(this.query.rel, raw);
+        } else {
+            const tuple = <ITuple<INamedValue<number>>>this.query.tuple;
+            const raw = db.relationSchema(this.query.rel).map(attr => tuple.vals.find(val => val.attr === attr.name).val);
+            db.insert(this.query.rel, raw);
+        }
+    }
+}
+
+class SelectCQ implements IQuery {
+    constructor(private query: ISelectCQ) { }
+
+    public execute(db: Database): Relation | void {
+    }
+}
+
+export class CQQuery {
+    public static parse(q: string): IQuery {
         const _q = parse(q);
-        if (isCreateCQ(_q)) {
-            return <CreateQuery>{
-                type: QueryType.CREATE,
-                rel: _q.rel,
-                attrs: _q.attrs
-            };
-        } else if (isInsertCQ(_q)) {
-            const tuple = _q.tuple.type == TupleType.NAMED ? (<INamedValue<Literal>[]>_q.tuple.vals).map()
-            return <InsertQuery>{
-                type: QueryType.INSERT,
-                rel: _q.rel,
-                tuple: _q.tuple.type == TupleType.UNNAMED ? _q.tuple.vals.map(v => v.val)
-            };
-        } else if (isSelectCQ(_q)) {
-            return <SelectQuery>{
-                type: QueryType.SELECT,
-                name: _q.name,
-                attrs: _q.attrs,
-                SAO: _q.head.vals.map(v => (<VariableValue>v.val).val),
-                atoms: _q.body.map(atom => <Atom>{rel: atom.rel})
-            };
+        switch (_q.type) {
+            case QueryType.CREATE: return new CreateCQ(<ICreateCQ>_q);
+            case QueryType.INSERT: return new InsertCQ(<IInsertCQ>_q);
+            case QueryType.SELECT: return new SelectCQ(<ISelectCQ>_q);
+            default: throw new Error("Unsupported query type.");
         }
     }
 }

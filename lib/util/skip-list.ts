@@ -10,12 +10,22 @@ class Node<T extends IComparable<T>> {
     }
 }
 
+export class DuplicateKeyError<T> extends Error {
+    constructor(private _key: T) {
+        super();
+    }
+
+    public get key(): T {
+        return this._key;
+    }
+}
+
 export class SkipList<T extends IComparable<T>> {
     private head: Node<T>;
     private tail: Node<T>;
     private level: number;
 
-    constructor(private depth: number, private p: number) {
+    constructor(private depth: number, private p: number, private throwsOnDuplicate = false) {
         this.head = new Node<T>(null, depth);
         this.tail = new Node<T>(null, 0);
         this.level = 0;
@@ -41,7 +51,7 @@ export class SkipList<T extends IComparable<T>> {
         return [node.key, node.next[0].key];
     }
 
-    public insert(key: T): boolean {
+    public insert(key: T): void {
         let pred = new Array<Node<T>>(this.depth + 1);
         let node = this.head;
         for (let i = this.level; i >= 0; i--) {
@@ -68,10 +78,8 @@ export class SkipList<T extends IComparable<T>> {
                 newNode.next[i] = pred[i].next[i];
                 pred[i].next[i] = newNode;
             }
-
-            return true;
-        } else {
-            return false;
+        } else if (this.throwsOnDuplicate) {
+            throw new DuplicateKeyError(key);
         }
     }
 

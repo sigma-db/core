@@ -1,5 +1,4 @@
 ﻿import { MAX, WILDCARD } from './constants';
-import { Tuple } from './tuple';
 
 export class Box {
     constructor(protected b: number[]) { }
@@ -17,15 +16,15 @@ export class Box {
     /** 
      *  Checks whether this box is a tuple 
      */
-    public isTuple(): boolean {
+    public isPoint(): boolean {
         return this.b.every(i => (i & MAX) == MAX);
     }
 
     /**
      * Transforms the box into a tuple
      */
-    public tuple(): Tuple {
-        return Tuple.from(this.b.map(i => i ^ MAX));    // remove prepended '1' for result tuple
+    public point(): number[] {
+        return this.b.map(i => i ^ MAX);    // remove prepended '1' for raw tuple
     }
 
     /**
