@@ -25,9 +25,9 @@ Our database engine supports an extension of [conjunctive queries](https://en.wi
 
 We discern three types of queries, whose syntax we outline by example:
 
-1. To **create** a new relation *Employee* with attributes *id*, *salary*, *sex* and *boss* of types `int`, `int`, `char` and `int`, respectively, write `Employee: (id: int, salary: int, sex: char, boss: int)`. Supported data types are `int`, `char` and `bool`.
-2. To **insert** a tuple into the (existing) relation *Employee*, write `Employee(id=1, salary=4200, sex='f', boss=0)`. Alternatively, the less verbose syntax `Employee(1, 4200, 'f', 0)` can be used. Please note that in the latter case, the order of the attributes matters, while it does not in the former.
-3. To **select** all employees' IDs whose salary is 4,200, write either `(empId=x) <- Employee(id=x, salary=4200)` or `(empId=x) <- Employee(x, 4200, y, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
+1. To **create** a new relation *Employee* with attributes *id*, *name*, *salary* and *boss* of types `int`, `string`, `int` and `int`, respectively, write `Employee: (id: int, name: string, salary: int, boss: int)`. Supported data types are `int`, `string`, `char` and `bool`. Please note that, for now, string support is very limited and only allows for strings of length at most 4.
+2. To **insert** a tuple into the (existing) relation *Employee*, write `Employee(id=1, name="Marc", salary=4200, boss=0)`. Alternatively, the less verbose syntax `Employee(1, "Marc", 4200, 0)` can be used. Please note that in the latter case, the order of the attributes matters, while it does not in the former.
+3. To **select** all employees' IDs whose salary is 4,200, write either `(name=x) <- Employee(name=x, salary=4200)` or `(name=y) <- Employee(x, y, 4200, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
 
 ### Library
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all division heads with at least one employee earning 4,200.
@@ -59,7 +59,7 @@ db.close();
 We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 
 For instance, as of now, we do *not* support:
-* string-valued attributes
+* arbitrarily-sized string-valued attributes
 * parallel/distributed query evaluation
 * aggregation queries
 * concurrent access

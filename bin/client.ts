@@ -18,7 +18,11 @@ repl.on('line', input => {
     try {
         const query = Query.parse(input);
         const result = query.execute(db);
-        console.log(!!result ? result.toString() : "Done");
+        if (!!result) {
+            console.table([...result.tuples()])
+        } else {
+            console.log("Done");
+        }
     } catch (e) {
         console.log(e.message);
     }

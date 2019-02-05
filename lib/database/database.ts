@@ -1,7 +1,7 @@
 ﻿import { DuplicateKeyError } from '../util';
 import { Box } from './box';
 import { AttributeSpecification, Relation, TTuple } from './relation';
-import { CreateTransaction, InsertTransaction, Transaction, TransactionLog, TransactionType } from './transaction';
+import { ITransaction, TransactionLog, TransactionType } from './transaction';
 
 interface Options {
     logging?: boolean;
@@ -9,6 +9,16 @@ interface Options {
 
 export interface Schema {
     [name: string]: AttributeSpecification[];
+}
+
+interface ICreateTransaction extends ITransaction {
+    name: string;
+    attrs: AttributeSpecification[];
+}
+
+interface IInsertTransaction extends ITransaction {
+    rel: string;
+    tuple: number[];
 }
 
 export class Database {
@@ -25,10 +35,13 @@ export class Database {
         const log = TransactionLog.open(path);
         const db = new Database(log);
 
+        const isCreate = (tx: ITransaction): tx is ICreateTransaction => tx.type == TransactionType.CREATE;
+        const isInsert = (tx: ITransaction): tx is IInsertTransaction => tx.type == TransactionType.INSERT;
+
         for (const tx of log) {
-            if (Transaction.isCreate(tx)) {
+            if (isCreate(tx)) {
                 db._createRelation(tx.name, tx.attrs);
-            } else if (Transaction.isInsert(tx)) {
+            } else if (isInsert(tx)) {
                 db._insert(tx.rel, tx.tuple);
             }
         }
@@ -50,7 +63,7 @@ export class Database {
      */
     public createRelation(name: string, attrs: AttributeSpecification[]): void {
         this._createRelation(name, attrs);
-        this.log.write(<CreateTransaction>{ type: TransactionType.CREATE, name: name, attrs: attrs });
+        this.log.write(<ICreateTransaction>{ type: TransactionType.CREATE, name: name, attrs: attrs });
     }
 
     /**
@@ -60,7 +73,7 @@ export class Database {
      */
     public insert(rel: string, tuple: TTuple) {
         this._insert(rel, tuple);
-        this.log.write(<InsertTransaction>{ type: TransactionType.INSERT, rel: rel, tuple: tuple });
+        this.log.write(<IInsertTransaction>{ type: TransactionType.INSERT, rel: rel, tuple: tuple });
     }
 
     public relationSchema(rel: string): AttributeSpecification[] {

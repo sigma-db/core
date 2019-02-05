@@ -162,6 +162,11 @@ export class ObjectSchema {
 
     private constructor(private root: IType<TType>, private id: number) { }
 
+    /**
+     * Creates a new schema from a given object specification
+     * @param type The type specification of the object to encode
+     * @param id The unique identifier of the object type
+     */
     public static create(type: IType<TType>, id: number = ObjectSchema.ID++): ObjectSchema {
         return new ObjectSchema(type, id);
     }

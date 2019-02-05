@@ -12,7 +12,8 @@
     "typescript": "^3.2.4"
   },
   "scripts": {
-    "build": "node build/grammar.js ./resources ./src/query/parsers && tsc"
+    "build": "node build/grammar.js ./resources ./src/query/parsers && tsc",
+    "db": "node dist/bin/client.js"
   },
   "dependencies": {},
   "bin": "dist/bin/client.js",

@@ -1,6 +1,6 @@
 ﻿import { CQQuery } from "./cq-query";
 import { SQLQuery } from "./sql-query";
-import { IQuery } from "./iquery";
+import { IQuery } from "./index";
 
 export enum QueryLang { CQ, SQL };
 
@@ -19,8 +19,10 @@ export class Query {
         }
     }
 }
+
 /*
 Emp: (name: string, age: int)
-Emp("Marc", 21)
-db.query('Q(id=y, name="xyz") <- Emp(id=y, divId=z), Div(id=z, name=12)')
+Emp("Sam", 23)
+Q(age=x, name=y) <- Emp(age=x, name=y)
+Q(name=y) <- Emp(age=x, name=y)
 */

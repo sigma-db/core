@@ -1,5 +1,5 @@
 ﻿import { parse } from "./parsers/sql";
-import { IQuery } from "./iquery";
+import { IQuery } from "./index";
 
 type Identifier = string;
 

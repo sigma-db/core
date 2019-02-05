@@ -1,32 +1,13 @@
 ﻿import { appendFile, closeSync, existsSync, openSync, readFileSync, PathLike } from 'fs';
 import { ObjectSchema, Type } from './serialisation';
-import { AttributeSpecification } from './relation';
 
 export enum TransactionType { CREATE, INSERT };
 
-export abstract class Transaction {
-    public static isCreate(tx: Transaction): tx is CreateTransaction {
-        return tx.type == TransactionType.CREATE;
-    }
-
-    public static isInsert(tx: Transaction): tx is InsertTransaction {
-        return tx.type == TransactionType.INSERT;
-    }
-
-    abstract get type(): TransactionType;
+export interface ITransaction {
+    type: TransactionType;
 }
 
-export interface CreateTransaction extends Transaction {
-    name: string;
-    attrs: AttributeSpecification[];
-}
-
-export interface InsertTransaction extends Transaction {
-    rel: string;
-    tuple: number[];
-}
-
-export class TransactionLog implements Iterable<Transaction> {
+export class TransactionLog implements Iterable<ITransaction> {
     private createSchema: ObjectSchema;
     private insertSchema: ObjectSchema;
 
@@ -52,7 +33,7 @@ export class TransactionLog implements Iterable<Transaction> {
         return new TransactionLog(fd);
     }
 
-    *[Symbol.iterator](): IterableIterator<Transaction> {
+    *[Symbol.iterator](): IterableIterator<ITransaction> {
         const buf = readFileSync(this.fd);
         let pos = 0;
         while (pos < buf.length) {
@@ -64,7 +45,7 @@ export class TransactionLog implements Iterable<Transaction> {
         }
     }
 
-    public write(tx: Transaction): void {
+    public write(tx: ITransaction): void {
         const schema = tx.type == TransactionType.CREATE ? this.createSchema : this.insertSchema;
         const buf = schema.encode(tx);
         appendFile(this.fd, buf, err => {

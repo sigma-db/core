@@ -26,21 +26,8 @@ interface ITuple<V extends IValue<Literal | VariableName>> {
     vals: Array<V>;
 }
 
-interface ISelectTuple<V extends IValue<Literal | VariableName>> extends ITuple<V> {
+interface IAtom extends ITuple<IValue<Literal | VariableName>> {
     rel: string;
-}
-
-interface IAtom {
-    type: TupleType;
-    rel: string;
-}
-
-interface INamedAtom extends IAtom {
-    vals: ISelectTuple<INamedValue<Literal | VariableName>>;
-}
-
-interface IUnnamedAtom extends IAtom {
-    vals: ISelectTuple<IValue<Literal | VariableName>>;
 }
 
 interface ICQ {

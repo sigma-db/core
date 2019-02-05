@@ -18,16 +18,13 @@ class Attribute implements AttributeSpecification {
     private static readonly types: { [type: string]: TypeConstructor } = Object.freeze({
         "int": Number,
         "string": (x: number, width: number) => {
-            const dquote = "\"".charCodeAt(0);
-            const result = new Array<number>(width + 2);
-            result[0] = dquote;
-            let pos = 1;
+            const result = new Array<number>(width);
+            let pos = 0;
             while (x > 0) {
                 result[pos++] = Number(x & 0xFF);
                 x >>= 8;
             }
-            result[pos] = dquote;
-            return String.fromCharCode(...result.slice(0, pos + 1));
+            return String.fromCharCode(...result.slice(0, pos));
         },
         "char": String.fromCharCode,
         "bool": Boolean
@@ -52,9 +49,9 @@ class Attribute implements AttributeSpecification {
     }
 }
 
-class Tuple extends Array<number> implements IComparable<Tuple> {
-    private constructor(private _tuple: TTuple, private schema: Attribute[]) {
-        super(..._tuple);
+class Tuple extends Uint32Array implements IComparable<Tuple> {
+    private constructor(tuple: TTuple, private schema: Attribute[]) {
+        super(tuple);
     }
 
     public static create(tuple: TTuple, schema: Attribute[]): Tuple {
@@ -67,17 +64,19 @@ class Tuple extends Array<number> implements IComparable<Tuple> {
     }
 
     public toString(): string {
-        return `(${this._tuple.map((v, i) => this.schema[i].valueOf(v)).join(", ")})`;
+        const result = new Array(this.schema.length);
+        this.forEach((v, i) => result[i] = this.schema[i].valueOf(v))
+        return `(${result.join(", ")})`;
     }
 }
 
 export class Relation {
-    private tuples: SkipList<Tuple>;
-    private schema: Attribute[];
+    private _tuples: SkipList<Tuple>;
+    private _schema: Attribute[];
 
     private constructor(attrs: Attribute[], throwsOnDuplicate: boolean) {
-        this.tuples = new SkipList<Tuple>(4, 0.25, throwsOnDuplicate);
-        this.schema = attrs;
+        this._tuples = new SkipList<Tuple>(4, 0.25, throwsOnDuplicate);
+        this._schema = attrs;
     }
 
     public static create(attrs: Array<AttributeSpecification>, throwsOnDuplicate: boolean = true): Relation {
@@ -85,24 +84,16 @@ export class Relation {
     }
 
     public insert(t: TTuple) {
-        const _t = Tuple.create(t, this.schema)
-        this.tuples.insert(_t);
+        const _t = Tuple.create(t, this._schema)
+        this._tuples.insert(_t);
     }
 
     public get attrs(): AttributeSpecification[] {
-        return this.schema;
+        return this._schema;
     }
 
     public get arity(): number {
-        return this.schema.length;
-    }
-
-    public toString(): string {
-        const result = [this.schema.map(a => a.name).join(", ")];
-        for (let t of this.tuples) {
-            result.push(t.map((v, i) => this.schema[i].valueOf(v)).join(", "));
-        }
-        return result.join(",\r\n");
+        return this._schema.length;
     }
 
     /**
@@ -135,10 +126,10 @@ export class Relation {
      * Computes all gap boxes inferrable from this index
      */
     public gaps(tuple: TTuple): Box[] {
-        const _tuple = Tuple.create(tuple, this.schema);
+        const _tuple = Tuple.create(tuple, this._schema);
         const gaps: Box[] = [];
         const r = this.arity;
-        const [pred, succ] = this.tuples.find(_tuple);
+        const [pred, succ] = this._tuples.find(_tuple);
 
         if (!pred && !succ) {
             // empty relation --> return box covering entire (sub)space
@@ -181,5 +172,16 @@ export class Relation {
         }
 
         return gaps;
+    }
+
+    public *tuples(): IterableIterator<object> {
+        for (let tuple of this._tuples) {
+            const result = {};
+            tuple.forEach((attr, idx) => {
+                const spec = this._schema[idx];
+                result[spec.name] = spec.valueOf(attr);
+            })
+            yield result;
+        }
     }
 }
