@@ -1,9 +1,8 @@
-﻿import { AttributeSpecification, Box, Database, Relation, Schema, DataType } from "../database";
+﻿import { AttributeSpecification, Box, Database, DataType, Relation, Schema } from "../database";
 import { CDS } from "../database/cds";
 import { WILDCARD } from "../database/constants";
-import { IComparable } from "../util";
 import { IQuery } from "./index";
-import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName, IValue } from "./parsers/cq";
+import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName } from "./parsers/cq";
 
 enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
@@ -14,7 +13,12 @@ interface CQAtom {
     vars: Array<CQVariable>;
 }
 
-class CQVariable implements IComparable<CQVariable> {
+interface CQAtomLegacy {
+    rel: string;
+    vars: number[];
+}
+
+class CQVariable {
     constructor(private _id: number, private _type: DataType, private _width: number) { }
 
     public get id(): number {
@@ -27,10 +31,6 @@ class CQVariable implements IComparable<CQVariable> {
 
     public get width(): number {
         return this._width;
-    }
-
-    public compareTo(other: CQVariable): number {
-        return this._id - other._id;
     }
 }
 
@@ -45,6 +45,77 @@ class CQValueSet {
 
     public get(name: string): CQVariable {
         return this.vars[name];
+    }
+}
+
+class Tetris {
+    private kb: CDS;
+
+    constructor(private db: Database) {
+        this.kb = new CDS();
+    }
+
+    private gaps(atoms: Array<CQAtomLegacy>, tuple: number[], SAO: number[]): Box[] {
+        const C = new Array<Box>();
+        atoms.forEach(atom => {
+            const { rel, vars } = atom;
+            const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
+            const B = this.db.gaps(rel, _tuple).map(b => new Box(SAO.map(v => {
+                const pos = vars.indexOf(v);
+                return pos < 0 ? WILDCARD : b.at(pos);
+            })));
+            C.push(...B);
+        });
+        return C;
+    }
+
+    private probe(b: Box): [boolean, Box] {
+        const a = this.kb.witness(b);
+        if (!!a) {
+            return [true, a];
+        }
+        else if (b.isPoint()) {
+            return [false, b];
+        }
+        else {
+            let [b1, b2] = b.split();
+
+            let [v1, w1] = this.probe(b1);
+            if (!v1) {
+                return [false, w1];
+            }
+            else if (w1.contains(b)) {
+                return [true, w1];
+            }
+
+            let [v2, w2] = this.probe(b2);
+            if (!v2) {
+                return [false, w2];
+            }
+            else if (w2.contains(b)) {
+                return [true, w2];
+            }
+
+            let w = w1.resolve(w2);
+            this.kb.insert(w);
+            return [true, w];
+        }
+    }
+
+    public evaluate(head: number[], body: Array<CQAtomLegacy>, result: Relation) {
+        const SAO = [...new Set(body.flatMap(atom => atom.vars))];
+        const all: Box = Box.all(SAO.length); // a box covering the entire space
+
+        let [v, w] = this.probe(all);
+        while (!v) {
+            let B = this.gaps(body, w.point(), SAO);
+            if (B.length == 0) {
+                result.insert(head.map(v => w.point()[SAO.indexOf(v)]));
+                B = [w];
+            }
+            this.kb.insert(...B);
+            [v, w] = this.probe(all);
+        }
     }
 }
 
@@ -108,75 +179,11 @@ class SelectCQ implements IQuery {
         });
     }
 
-    private gaps(atoms: Array<{ rel: string, vars: number[] }>, tuple: number[], SAO: number[], db: Database): Box[] {
-        const C = new Array<Box>();
-        atoms.forEach(atom => {
-            const { rel, vars } = atom;
-            const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
-            const B = db.gaps(rel, _tuple).map(b => new Box(SAO.map(v => {
-                const pos = vars.indexOf(v);
-                return pos < 0 ? WILDCARD : b.at(pos);
-            })));
-            C.push(...B);
-        });
-        return C;
-    }
-
-    private tetris(head: number[], body: Array<{ rel: string, vars: number[] }>, result: Relation, db: Database) {
-        const SAO = [...new Set(body.flatMap(atom => atom.vars))];
-        const A: CDS = new CDS();
-        const all: Box = Box.all(SAO.length); // a box covering the entire space
-
-        let probe = (b: Box): [boolean, Box] => {
-            const a = A.witness(b);
-            if (!!a) {
-                return [true, a];
-            }
-            else if (b.isPoint()) {
-                return [false, b];
-            }
-            else {
-                let [b1, b2] = b.split();
-
-                let [v1, w1] = probe(b1);
-                if (!v1) {
-                    return [false, w1];
-                }
-                else if (w1.contains(b)) {
-                    return [true, w1];
-                }
-
-                let [v2, w2] = probe(b2);
-                if (!v2) {
-                    return [false, w2];
-                }
-                else if (w2.contains(b)) {
-                    return [true, w2];
-                }
-
-                let w = w1.resolve(w2);
-                A.insert(w);
-                return [true, w];
-            }
-        }
-
-        let [v, w] = probe(all);
-        while (!v) {
-            let B = this.gaps(body, w.point(), SAO, db);
-            if (B.length == 0) {
-                result.insert(head.map(v => w.point()[SAO.indexOf(v)]));
-                B = [w];
-            }
-            A.insert(...B);
-            [v, w] = probe(all);
-        }
-    }
-
     public execute(db: Database): Relation {
         const varset = new CQValueSet();
         const atoms = this.resolve(this.query.body, db.schema, varset);
         const attrs = this.query.attrs.map(_attr => {
-            const { attr, val } = (<INamedValue<VariableName>>_attr)
+            const { attr, val } = (<INamedValue<VariableName>>_attr);
             return <AttributeSpecification>{
                 name: attr,
                 type: varset.get(val).type,
@@ -187,7 +194,9 @@ class SelectCQ implements IQuery {
 
         const _head = this.query.attrs.map(attr => varset.get(<string>attr.val).id);
         const _body = atoms.map(atom => ({ rel: atom.rel, vars: atom.vars.map(v => v.id) }));
-        this.tetris(_head, _body, result, db);
+        const tetris = new Tetris(db);
+
+        tetris.evaluate(_head, _body, result);
 
         return result;
     }

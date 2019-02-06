@@ -91,28 +91,3 @@ export class SkipList<T extends IComparable<T>> {
         }
     }
 }
-
-/*class Test implements IComparable<Test> {
-    private constructor(private tuple: number[]) { }
-
-    public compareTo(other: Test): number {
-        const p = this.tuple.findIndex((_, i) => this.tuple[i] != other.tuple[i]);
-        return p < 0 ? 0 : this.tuple[p] - other.tuple[p];
-    }
-
-    public static create(tuple: number[]): Test {
-        return new Test(tuple);
-    }
-}
-
-const l = new SkipList<Test>(4, 0.25);
-
-const [x1, y1] = l.find(Test.create([0, 0, 0]));
-const [x2, y2] = l.find(Test.create([1, 2, 3]));
-const [x3, y3] = l.find(Test.create([4, 603, 469]));
-const [x4, y4] = l.find(Test.create([56, 549, 488]));
-const [x5, y5] = l.find(Test.create([57, 999, 281]));
-const [x6, y6] = l.find(Test.create([72, 367, 591]));
-const [x7, y7] = l.find(Test.create([73, 367, 591]));
-
-console.log();*/
