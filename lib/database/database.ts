@@ -3,42 +3,31 @@ import { Box } from './box';
 import { AttributeSpecification, Relation, TTuple } from './relation';
 import { ITransaction, TransactionLog, TransactionType } from './transaction';
 
-interface Options {
-    logging?: boolean;
+interface IOptions {
+    path?: string;
 }
 
 export interface Schema {
     [name: string]: AttributeSpecification[];
 }
 
-export abstract class Database {
+export abstract class Database implements Database {
     /**
      * Opens an existing database stored at the specified location 
      * or creates a new one if it does not yet exist.
-     * @param path The path to the database
      */
-    public static open(path: string, options?: Options): Database {
-        const log = TransactionLog.open(path);
-        return new DatabaseLogged(log);
+    public static open({ path }: IOptions): Database {
+        let db: Database;
+        if (!!path) {
+            const log = TransactionLog.open(path);
+            db = new DatabaseLogged(log);
+        } else {
+            db = new DatabaseBase();
+        }
+
+        db.init();
+        return db;
     }
-
-    public static temp() {
-        return new DatabaseBase();
-    }
-
-    /**
-     * The current schema of the database
-     */
-    public abstract get schema(): Schema;
-
-    public abstract relationSchema(rel: string): AttributeSpecification[];
-
-    public abstract gaps(rel: string, tuple: TTuple): Box[];
-
-    /**
-     * Closes the database
-     */
-    public abstract close(): void;
 
     /**
      * Creates a new relation
@@ -53,12 +42,28 @@ export abstract class Database {
      * @param tuple The tuple to insert
      */
     public abstract insert(rel: string, tuple: TTuple): void;
+
+    public abstract gaps(rel: string, tuple: TTuple): Box[];
+
+    /**
+     * The current schema of the database
+     */
+    public abstract get schema(): Schema;
+
+    public abstract relationSchema(rel: string): AttributeSpecification[];
+
+    /**
+     * Closes the database
+     */
+    public abstract close(): void;
+
+    protected abstract init(): void;
 }
 
 class DatabaseBase extends Database {
     private readonly relations: { [name: string]: Relation } = {};
 
-    public close(): void { }
+    protected init(): void { }
 
     public relationSchema(rel: string): AttributeSpecification[] {
         return this.relations[rel].attrs;
@@ -94,6 +99,8 @@ class DatabaseBase extends Database {
             }
         }
     }
+
+    public close(): void { }
 }
 
 interface ICreateTransaction extends ITransaction {
@@ -109,10 +116,9 @@ interface IInsertTransaction extends ITransaction {
 class DatabaseLogged extends DatabaseBase {
     constructor(private log: TransactionLog) {
         super();
-        this.init();
     }
 
-    private init(): void {
+    protected init(): void {
         const isCreate = (tx: ITransaction): tx is ICreateTransaction => tx.type == TransactionType.CREATE;
         const isInsert = (tx: ITransaction): tx is IInsertTransaction => tx.type == TransactionType.INSERT;
 

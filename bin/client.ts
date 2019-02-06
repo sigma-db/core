@@ -1,12 +1,11 @@
 ﻿import { Database, Query } from '../lib';
 import { createInterface } from 'readline';
 
-if (process.argv.length != 3) {
-    console.log(`Invalid parameters.\r\nUsage: node ${process.argv[1]} </path/to/database>`);
-    process.exit(1);
+if (process.argv.length < 3) {
+    console.log(`Working in temporary database. Any data during this session will be lost on closing the client.\r\nTo persist data, run: node ${process.argv[1]} </path/to/database>`);
 }
 
-const db = Database.open(process.argv[2]);
+const db = Database.open({ path: process.argv[2] });
 const repl = createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -28,4 +27,4 @@ repl.on('line', input => {
     }
     repl.prompt();
 });
-repl.on('close', () => db.close());
+repl.on('close', db.close);

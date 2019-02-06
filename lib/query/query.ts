@@ -19,10 +19,3 @@ export class Query {
         }
     }
 }
-
-/*
-Emp: (name: string, age: int)
-Emp("Sam", 23)
-Q(age=x, name=y) <- Emp(age=x, name=y)
-Q(name=y) <- Emp(age=x, name=y)
-*/

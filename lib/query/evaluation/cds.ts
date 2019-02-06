@@ -1,5 +1,5 @@
-﻿import { DyadicTrie } from '../util';
-import { Box } from './box';
+﻿import { Box } from '../../database';
+import { DyadicTrie } from '../../util';
 
 export class CDS {
     private data: DyadicTrie<any>;
