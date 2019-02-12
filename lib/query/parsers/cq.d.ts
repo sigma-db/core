@@ -1,4 +1,4 @@
-type Literal = number;
+type Literal = number | bigint;
 type VariableName = string;
 
 declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select" }

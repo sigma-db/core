@@ -36,7 +36,7 @@ id        "identifier" = [A-Za-z_][A-Za-z0-9_]* { return text() }
 /* literals */
 literal  "literal"         = lint / lstring/ lchar / lbool
 lint     "integer literal" = ([1-9][0-9]* / "0") { return Number(text()) }
-lstring  "string literal"  = dquote s:[^\"]* dquote { return [...s].map(c => Number(c.charCodeAt(0))).reduceRight((p, c) => (p << 8) + c, 0) }
+lstring  "string literal"  = dquote s:[^\"]* dquote { return [...s].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n) }
 lchar    "char literal"    = squote s:[^\'] squote { return s.charCodeAt(0) }
 lbool    "bool literal"    = ltrue / lfalse
 ltrue    "true"            = "true"i { return 1 }

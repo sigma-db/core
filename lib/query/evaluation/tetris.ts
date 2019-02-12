@@ -19,7 +19,7 @@ export class Tetris {
         atoms.forEach(atom => {
             const { rel, vars } = atom;
             const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
-            const B = this.db.gaps(rel, _tuple).map(b => new Box(SAO.map(v => {
+            const B = this.db.relation(rel).gaps(_tuple).map(b => new Box(SAO.map(v => {
                 const pos = vars.indexOf(v);
                 return pos < 0 ? WILDCARD : b.at(pos);
             })));

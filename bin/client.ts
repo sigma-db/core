@@ -2,7 +2,7 @@
 import { createInterface } from 'readline';
 
 if (process.argv.length < 3) {
-    console.log(`Working in temporary database. Any data during this session will be lost on closing the client.\r\nTo persist data, run: node ${process.argv[1]} </path/to/database>`);
+    console.warn(`Working in a temporary database. Any data during this session will be lost when closing the connection.\r\nTo persist data, run: node ${process.argv[1]} </path/to/database>`);
 }
 
 const db = Database.open({ path: process.argv[2] });

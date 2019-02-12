@@ -1,97 +1,100 @@
-﻿import { SkipList, IComparable } from "../util";
+﻿import { SkipList, DuplicateKeyError } from "../util";
+import { IAttribute, TAttribute, DataType, IntAttribute, BoolAttribute, StringAttribute, CharAttribute } from "./attribute";
 import { Box } from "./box";
 import { EXP, MAX, MIN, WILDCARD } from "./constants";
+import { Tuple } from "./tuple";
+import { ObjectSchema, Type } from "./serialisation";
+import { TransactionLog } from "./transaction";
+import { IValue } from "./value";
 
-export type TValue = number;
-export enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
+export type TValue = number | bigint;
 export type TTuple = Array<TValue>;
 
-export interface AttributeSpecification {
-    name: string;
-    type: DataType;
-    width: number;
+interface IOptions {
+    throwsOnDuplicate: boolean;
+    isLogged: boolean;
+    log: TransactionLog;
 }
 
-type TypeConstructor = (value: TValue, width?: number) => number | string | boolean;
+export abstract class Relation {
+    protected _name: string;
+    protected _schema: Array<TAttribute>;
+    protected _tuples: SkipList<Tuple>;
 
-class Attribute implements AttributeSpecification {
-    private static readonly types: { [type: string]: TypeConstructor } = Object.freeze({
-        "int": Number,
-        "string": (x: number, width: number) => {
-            const result = new Array<number>(width);
-            let pos = 0;
-            while (x > 0) {
-                result[pos++] = Number(x & 0xFF);
-                x >>= 8;
+    /**
+     * Default options to create the relation with if not specified differently by the user
+     */
+    private static readonly defaultOptions: Partial<IOptions> = {
+        throwsOnDuplicate: true,
+        isLogged: false
+    }
+
+    constructor(name: string, schema: Array<TAttribute>, tuples: SkipList<Tuple>) {
+        this._name = name;
+        this._schema = schema;
+        this._tuples = tuples;
+    }
+
+    /**
+     * Creates a new relation
+     * @param name The name of the relation
+     * @param attrs The attributes of the relation
+     * @param options Options specifying the behaviour of the relation
+     */
+    public static create(name: string, attrs: Array<IAttribute>, { throwsOnDuplicate, isLogged, log } = Relation.defaultOptions): Relation {
+        const tuples = new SkipList<Tuple>(4, 0.25, throwsOnDuplicate);
+        const schema = attrs.map(attr => {
+            switch (attr.type) {
+                case DataType.INT: return new IntAttribute(attr.name);
+                case DataType.CHAR: return new CharAttribute(attr.name);
+                case DataType.STRING: return new StringAttribute(attr.name, attr.width);
+                case DataType.BOOL: return new BoolAttribute(attr.name);
+                default: throw new Error('Unsupported data type!');
             }
-            return String.fromCharCode(...result.slice(0, pos));
-        },
-        "char": String.fromCharCode,
-        "bool": Boolean
-    });
+        });
 
-    constructor(private _name: string, private _type: DataType, private _width: number) { }
-
-    public valueOf(value: TValue) {
-        return Attribute.types[this._type](value, this._width);
+        if (isLogged) {
+            return new RelationLogged(name, schema, tuples, log);
+        } else {
+            return new RelationTemp(name, schema, tuples);
+        }
     }
 
-    public get name() {
-        return this._name;
+    /**
+     * Inserts a new tuple into the relation
+     * @param tuple The tuple to insert
+     */
+    public insert(tuple: TTuple) {
+        const _tuple = Tuple.create(tuple);
+        try {
+            this._tuples.insert(_tuple);
+        } catch (e) {
+            if (e instanceof DuplicateKeyError) {
+                throw new Error(`Relation "${this._name}" already contains a tuple ${e.key.toString()}.`);
+            } else {
+                throw e;
+            }
+        }
     }
 
-    public get type(): DataType {
-        return this._type;
+    /**
+     * Returns a new relation sharing the state of this relation, 
+     * but not allowing further modifications of its tuple set.
+     */
+    public freeze(): Relation {
+        return new RelationStatic(this._name, this._schema, this._tuples);
     }
 
-    public get width(): number {
-        return this._width;
-    }
-}
-
-class Tuple extends Uint32Array implements IComparable<Tuple> {
-    private constructor(tuple: TTuple, private schema: Attribute[]) {
-        super(tuple);
-    }
-
-    public static create(tuple: TTuple, schema: Attribute[]): Tuple {
-        return new Tuple(tuple, schema);
-    }
-
-    public compareTo(other: Tuple): number {
-        const p = this.findIndex((_, i) => this[i] != other[i]);
-        return p < 0 ? 0 : this[p] - other[p];
-    }
-
-    public toString(): string {
-        const result = new Array(this.schema.length);
-        this.forEach((v, i) => result[i] = this.schema[i].valueOf(v))
-        return `(${result.join(", ")})`;
-    }
-}
-
-export class Relation {
-    private _tuples: SkipList<Tuple>;
-    private _schema: Attribute[];
-
-    private constructor(attrs: Attribute[], throwsOnDuplicate: boolean) {
-        this._tuples = new SkipList<Tuple>(4, 0.25, throwsOnDuplicate);
-        this._schema = attrs;
-    }
-
-    public static create(attrs: Array<AttributeSpecification>, throwsOnDuplicate: boolean = true): Relation {
-        return new Relation(attrs.map(attr => new Attribute(attr.name, attr.type, attr.width)), throwsOnDuplicate);
-    }
-
-    public insert(t: TTuple) {
-        const _t = Tuple.create(t, this._schema)
-        this._tuples.insert(_t);
-    }
-
-    public get attrs(): AttributeSpecification[] {
+    /**
+     * The relation schema as specified during the creation
+     */
+    public get schema(): Array<IAttribute> {
         return this._schema;
     }
 
+    /**
+     * The arity of the relation
+     */
     public get arity(): number {
         return this._schema.length;
     }
@@ -123,15 +126,16 @@ export class Relation {
     }
 
     /**
-     * Computes all gap boxes inferrable from this index
+     * Infer any gaps surrounding the given tuple within the relation
+     * @param tuple The tuple to probe
      */
     public gaps(tuple: TTuple): Box[] {
-        const _tuple = Tuple.create(tuple, this._schema);
+        const _tuple = Tuple.create(tuple);
         const gaps: Box[] = [];
         const r = this.arity;
         const [pred, succ] = this._tuples.find(_tuple);
 
-        if (!pred && !succ) {
+        /*if (!pred && !succ) {
             // empty relation --> return box covering entire (sub)space
             gaps.push(Box.all(r));
         } else if (!succ) {
@@ -169,19 +173,53 @@ export class Relation {
             let front = pred.slice(0, s).map(z => z ^ MAX);
             let back = Array(r - s - 1).fill(WILDCARD);
             this.dyadic(pred[s], succ[s]).forEach(i => gaps.push(new Box([...front, i, ...back])));
-        }
+        }*/
 
         return gaps;
     }
 
-    public *tuples(): IterableIterator<object> {
+    /**
+     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     */
+    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
         for (let tuple of this._tuples) {
-            const result = {};
-            tuple.forEach((attr, idx) => {
-                const spec = this._schema[idx];
-                result[spec.name] = spec.valueOf(attr);
-            })
-            yield result;
+            yield Object.assign({}, ...this._schema.map((attr, idx) => ({ [attr.name]: attr.valueOf(tuple[idx]) })));
         }
+    }
+}
+
+class RelationTemp extends Relation {
+}
+
+class RelationStatic extends Relation {
+    public insert(_tuple: TTuple): void {
+        throw new Error("Insertion into a static relation is not permitted");
+    }
+}
+
+class RelationLogged extends Relation {
+    private static ID: number = 1;
+
+    private log: TransactionLog;
+    private id: number;
+
+    constructor(name: string, schema: Array<TAttribute>, tuples: SkipList<Tuple>, log: TransactionLog) {
+        super(name, schema, tuples);
+        const tupleSchema = schema.map(attr => {
+            if (attr.type == DataType.STRING) {
+                return Type.BIGINT;
+            } else {
+                return Type.INT;
+            }
+        });
+        const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
+        this.log = log;
+        this.id = RelationLogged.ID++;
+        this.log.handle(this.id, logSchema, tx => super.insert(tx));
+    }
+
+    public insert(tuple: TTuple): void {
+        super.insert(tuple);
+        this.log.write(this.id, tuple)
     }
 }

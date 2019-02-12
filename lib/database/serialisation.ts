@@ -1,7 +1,7 @@
 /**
  * Data types that can be encoded and decoded
  */
-type TType = number | string | boolean | Array<object> | object;
+type TType = number | bigint | string | boolean | Array<object> | object;
 
 /**
  * A mapping of an object's property names to their respective data type
@@ -58,6 +58,37 @@ class IntType implements IType<number> {
     }
 }
 
+class BigIntType implements IType<bigint> {
+    public encode(val: bigint, buf: Buffer, pos: number): void {
+        let offset: number;
+        for (offset = 4; val > 0n; offset++) {
+            buf.writeUInt8(Number(val & 0xFFn), pos + offset);
+            val >>= 8n;
+        }
+        buf.writeUInt32LE(offset - 4, pos);
+    }
+
+    public decode(buf: Buffer, pos: number): bigint {
+        const len = buf.readUInt32LE(pos);
+        let result = 0n;
+        pos += 4;
+        for (let i = 0; i < len; i++) {
+            result += BigInt(buf.readUInt8(pos)) << BigInt(i * 8);
+            pos++;
+        }
+        return result;
+    }
+
+    public size(val: bigint): number {
+        let len = 0;
+        while (val > 0) {
+            val >>= 8n;
+            len++;
+        }
+        return len + 4;
+    }
+}
+
 class StringType implements IType<string> {
     public encode(val: string, buf: Buffer, pos: number): void {
         buf.writeInt32LE(val.length, pos);
@@ -88,6 +119,20 @@ class BoolType implements IType<boolean> {
     }
 }
 
+class CharType implements IType<string> {
+    public encode(val: string, buf: Buffer, pos: number): void {
+        buf.writeUInt8(val.charCodeAt(0) & 0xFF, pos);
+    }
+
+    public decode(buf: Buffer, pos: number): string {
+        return String.fromCharCode(buf.readUInt8(pos));
+    }
+
+    public size(_val: string): number {
+        return 1;
+    }
+}
+
 class ArrayType implements IType<Array<object>> {
     constructor(private type: IType<TType>) { }
 
@@ -113,6 +158,34 @@ class ArrayType implements IType<Array<object>> {
 
     public size(val: Array<object>): number {
         return val.reduce((p, c) => p + this.type.size(c), 0) + 4;
+    }
+}
+
+class TupleType implements IType<Array<object>> {
+    constructor(private type: Array<IType<TType>>) { }
+
+    public encode(val: Array<object>, buf: Buffer, pos: number): void {
+        buf.writeInt32LE(val.length, pos);
+        pos += 4;
+        val.forEach((v, i) => {
+            this.type[i].encode(v, buf, pos);
+            pos += this.type[i].size(v);
+        });
+    }
+
+    public decode(buf: Buffer, pos: number): Array<object> {
+        const len = buf.readInt32LE(pos);
+        const result = new Array<object>(len);
+        pos += 4;
+        for (let i = 0; i < len; i++) {
+            result[i] = <object>(this.type[i].decode(buf, pos));
+            pos += this.type[i].size(result[i]);
+        }
+        return result;
+    }
+
+    public size(val: Array<object>): number {
+        return val.reduce((p, c, i) => p + this.type[i].size(c), 0) + 4;
     }
 }
 
@@ -151,34 +224,34 @@ export const Type = Object.freeze({
     INT16: new IntType(2),
     INT32: new IntType(4),
     INT: new IntType(4),
+    CHAR: new CharType(),
     STRING: new StringType(),
     BOOL: new BoolType(),
+    BIGINT: new BigIntType(),
     ARRAY: (type: IType<TType>) => new ArrayType(type),
+    TUPLE: (types: Array<IType<TType>>) => new TupleType(types),
     OBJECT: (schema: TSchema) => new ObjectType(schema)
 });
 
 export class ObjectSchema {
-    private static ID = 0;
-
-    private constructor(private root: IType<TType>, private id: number) { }
+    private constructor(private root: IType<TType>) { }
 
     /**
      * Creates a new schema from a given object specification
      * @param type The type specification of the object to encode
-     * @param id The unique identifier of the object type
      */
-    public static create(type: IType<TType>, id: number = ObjectSchema.ID++): ObjectSchema {
-        return new ObjectSchema(type, id);
+    public static create(type: IType<TType>): ObjectSchema {
+        return new ObjectSchema(type);
     }
 
     /**
      * Writes an object to a buffer
      * @param obj The object to encode
      */
-    public encode(obj: any): Buffer {
-        const sz = this.root.size(obj);
-        const buf = Buffer.allocUnsafe(sz + 1);
-        buf.writeInt8(this.id, 0);
+    public encode(obj: any, id: number): Buffer {
+        const sz = this.size(obj);
+        const buf = Buffer.allocUnsafe(sz);
+        buf.writeUInt8(id, 0);
         this.root.encode(obj, buf, 1);
         return buf;
     }
@@ -188,10 +261,10 @@ export class ObjectSchema {
      * @param buf The buffer to read the object from
      * @param offset The offset to start reading from
      */
-    public decode(buf: Buffer, offset = 0): [number, TType] {
-        const id = buf.readInt8(offset);
+    public decode(buf: Buffer, offset = 0): [TType, number] {
+        const id = buf.readUInt8(offset);
         const obj = this.root.decode(buf, offset + 1);
-        return [id, obj];
+        return [obj, id];
     }
 
     /**

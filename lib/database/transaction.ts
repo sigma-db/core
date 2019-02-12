@@ -1,30 +1,16 @@
 ﻿import { appendFile, closeSync, existsSync, openSync, readFileSync, PathLike } from 'fs';
-import { ObjectSchema, Type } from './serialisation';
+import { ObjectSchema } from './serialisation';
 
-export enum TransactionType { CREATE, INSERT };
-
-export interface ITransaction {
-    type: TransactionType;
+interface ITransactionHandler {
+    schema: ObjectSchema;
+    handler: (tx: any) => void;
 }
 
-export class TransactionLog implements Iterable<ITransaction> {
-    private createSchema: ObjectSchema;
-    private insertSchema: ObjectSchema;
+export class TransactionLog {
+    private handlers: { [id: number]: ITransactionHandler };
 
     private constructor(private fd: number) {
-        this.createSchema = ObjectSchema.create(Type.OBJECT({
-            name: Type.STRING,
-            attrs: Type.ARRAY(Type.OBJECT({
-                name: Type.STRING,
-                type: Type.STRING,
-                width: Type.INT16
-            }))
-        }), TransactionType.CREATE);
-
-        this.insertSchema = ObjectSchema.create(Type.OBJECT({
-            rel: Type.STRING,
-            tuple: Type.ARRAY(Type.INT32)
-        }), TransactionType.INSERT);
+        this.handlers = {};
     }
 
     public static open(path: PathLike): TransactionLog {
@@ -33,21 +19,24 @@ export class TransactionLog implements Iterable<ITransaction> {
         return new TransactionLog(fd);
     }
 
-    *[Symbol.iterator](): IterableIterator<ITransaction> {
+    public load(): void {
         const buf = readFileSync(this.fd);
         let pos = 0;
         while (pos < buf.length) {
-            const type = buf.readUInt8(pos);
-            const schema = type == TransactionType.CREATE ? this.createSchema : this.insertSchema;
-            const [id, tx] = schema.decode(buf, pos);
+            const id = buf.readUInt8(pos);
+            const schema = this.handlers[id].schema;
+            const [tx, ] = schema.decode(buf, pos);
             pos += schema.size(tx);
-            yield Object.assign(tx, { type: id });
+            this.handlers[id].handler(tx);
         }
     }
 
-    public write(tx: ITransaction): void {
-        const schema = tx.type == TransactionType.CREATE ? this.createSchema : this.insertSchema;
-        const buf = schema.encode(tx);
+    public handle(type: number, schema: ObjectSchema, handler: (tx: any) => void): void {
+        this.handlers[type] = { schema: schema, handler: handler };
+    }
+
+    public write(id: number, tx: any): void {
+        const buf = this.handlers[id].schema.encode(tx, id);
         appendFile(this.fd, buf, err => {
             if (!!err) {
                 throw err;

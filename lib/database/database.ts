@@ -1,17 +1,19 @@
-﻿import { DuplicateKeyError } from '../util';
-import { Box } from './box';
-import { AttributeSpecification, Relation, TTuple } from './relation';
-import { ITransaction, TransactionLog, TransactionType } from './transaction';
+﻿import { IAttribute } from './attribute';
+import { Relation } from './relation';
+import { TransactionLog } from './transaction';
+import { ObjectSchema, Type } from './serialisation';
 
 interface IOptions {
     path?: string;
 }
 
-export interface Schema {
-    [name: string]: AttributeSpecification[];
+export interface ISchema {
+    [name: string]: Relation;
 }
 
-export abstract class Database implements Database {
+export abstract class Database {
+    protected readonly relations: { [name: string]: Relation } = {};
+
     /**
      * Opens an existing database stored at the specified location 
      * or creates a new one if it does not yet exist.
@@ -22,10 +24,8 @@ export abstract class Database implements Database {
             const log = TransactionLog.open(path);
             db = new DatabaseLogged(log);
         } else {
-            db = new DatabaseBase();
+            db = new DatabaseTemp();
         }
-
-        db.init();
         return db;
     }
 
@@ -34,114 +34,81 @@ export abstract class Database implements Database {
      * @param name The name of the relation
      * @param attrs The attributes of the relation
      */
-    public abstract createRelation(name: string, attrs: AttributeSpecification[]): void;
-
-    /**
-     * Inserts a new tuple into the specified relation
-     * @param rel The relation to insert into
-     * @param tuple The tuple to insert
-     */
-    public abstract insert(rel: string, tuple: TTuple): void;
-
-    public abstract gaps(rel: string, tuple: TTuple): Box[];
-
-    /**
-     * The current schema of the database
-     */
-    public abstract get schema(): Schema;
-
-    public abstract relationSchema(rel: string): AttributeSpecification[];
-
-    /**
-     * Closes the database
-     */
-    public abstract close(): void;
-
-    protected abstract init(): void;
-}
-
-class DatabaseBase extends Database {
-    private readonly relations: { [name: string]: Relation } = {};
-
-    protected init(): void { }
-
-    public relationSchema(rel: string): AttributeSpecification[] {
-        return this.relations[rel].attrs;
-    }
-
-    public get schema(): Schema {
-        return Object.keys(this.relations).reduce((S, R) => {
-            S[R] = this.relations[R].attrs;
-            return S;
-        }, {});
-    }
-
-    public gaps(rel: string, tuple: TTuple): Box[] {
-        return this.relations[rel].gaps(tuple);
-    }
-
-    public createRelation(name: string, attrs: AttributeSpecification[]): void {
+    public createRelation(name: string, attrs: IAttribute[]): void {
         if (!this.relations[name]) {
-            this.relations[name] = Relation.create(attrs);
+            this.relations[name] = this.relationConstructor(name, attrs);
         } else {
             throw new Error(`Relation "${name}" already exists.`);
         }
     }
 
-    public insert(rel: string, tuple: TTuple) {
-        try {
-            this.relations[rel].insert(tuple);
-        } catch (e) {
-            if (e instanceof DuplicateKeyError) {
-                throw new Error(`Relation "${rel}" already contains tuple ${e.key.toString()}.`);
-            } else {
-                throw e;
-            }
-        }
+    /**
+     * The current schema of the database
+     */
+    public get schema(): ISchema {
+        return Object.keys(this.relations).reduce((S, R) => {
+            S[R] = this.relations[R];
+            return S;
+        }, {});
     }
 
+    /**
+     * Access a given relation
+     * @param rel The name of the relation to retrieve
+     */
+    public relation(rel: string): Relation {
+        return this.relations[rel];
+    }
+
+    /**
+     * Closes the database
+     */
     public close(): void { }
+
+    protected abstract relationConstructor(name: string, attrs: IAttribute[]): Relation;
 }
 
-interface ICreateTransaction extends ITransaction {
+class DatabaseTemp extends Database {
+    protected relationConstructor(name: string, attrs: IAttribute[]): Relation {
+        return Relation.create(name, attrs, { isLogged: false });
+    }
+}
+
+interface ICreateTransaction {
     name: string;
-    attrs: AttributeSpecification[];
+    attrs: IAttribute[];
 }
 
-interface IInsertTransaction extends ITransaction {
-    rel: string;
-    tuple: number[];
-}
+class DatabaseLogged extends Database {
+    private static readonly CREATION_ID = 0;
+    private static readonly CREATION_SCHEMA = ObjectSchema.create(Type.OBJECT({
+        name: Type.STRING,
+        attrs: Type.ARRAY(Type.OBJECT({
+            name: Type.STRING,
+            type: Type.STRING,
+            width: Type.INT16
+        }))
+    }));
 
-class DatabaseLogged extends DatabaseBase {
     constructor(private log: TransactionLog) {
         super();
+        log.handle(DatabaseLogged.CREATION_ID, DatabaseLogged.CREATION_SCHEMA, tx => {
+            const { name, attrs } = <ICreateTransaction>tx;
+            super.createRelation(name, attrs);
+        });
+        log.load();
     }
 
-    protected init(): void {
-        const isCreate = (tx: ITransaction): tx is ICreateTransaction => tx.type == TransactionType.CREATE;
-        const isInsert = (tx: ITransaction): tx is IInsertTransaction => tx.type == TransactionType.INSERT;
-
-        for (const tx of this.log) {
-            if (isCreate(tx)) {
-                super.createRelation(tx.name, tx.attrs);
-            } else if (isInsert(tx)) {
-                super.insert(tx.rel, tx.tuple);
-            }
-        }
+    public createRelation(name: string, attrs: IAttribute[]): void {
+        super.createRelation(name, attrs);
+        this.log.write(DatabaseLogged.CREATION_ID, { name: name, attrs: attrs });
     }
 
     public close(): void {
         this.log.close();
     }
 
-    public createRelation(name: string, attrs: AttributeSpecification[]): void {
-        super.createRelation(name, attrs);
-        this.log.write(<ICreateTransaction>{ type: TransactionType.CREATE, name: name, attrs: attrs });
-    }
-
-    public insert(rel: string, tuple: TTuple) {
-        super.insert(rel, tuple);
-        this.log.write(<IInsertTransaction>{ type: TransactionType.INSERT, rel: rel, tuple: tuple });
+    protected relationConstructor(name: string, attrs: IAttribute[]): Relation {
+        return Relation.create(name, attrs, { isLogged: true, log: this.log });
     }
 }
