@@ -1,42 +1,49 @@
 import { IComparable } from "../util";
-import { IValue, NumberValue, BigIntValue } from "./value";
+import { Attribute } from "./attribute";
 
-export class Tuple implements ArrayLike<IValue<number | bigint>>, IComparable<Tuple> {
-    [n: number]: IValue<number | bigint>;
-    private readonly _length: number;
+export class Tuple implements ArrayLike<bigint>, IComparable<Tuple> {
+    readonly [n: number]: bigint;
+    public readonly length: number;
 
-    private constructor(tuple: Array<IValue<number | bigint>>) {
-        tuple.forEach((val, idx) => this[idx] = val);
-        this._length = tuple.length;
+    /**
+     * Turns the given array into a tuple and returns it
+     * @param tuple The array of avlues to create the tuple from
+     */
+    public static from(tuple: Array<bigint>): Tuple {
+        return Object.setPrototypeOf(tuple, Tuple.prototype);
     }
 
-    public slice: typeof Array.prototype.slice = Array.prototype.slice.bind(this);
-    public findIndex: typeof Array.prototype.findIndex = Array.prototype.findIndex.bind(this);
-    public forEach: typeof Array.prototype.forEach = Array.prototype.forEach.bind(this);
+    public slice(start?: number, end?: number): Array<bigint> {
+        return Array.prototype.slice.call(this, start, end);
+    }
 
-    public static create(tuple: Array<number | bigint>): Tuple {
-        return new Tuple(tuple.map(val => {
-            if (typeof val == 'number') {
-                return new NumberValue(val);
-            } else if (typeof val == 'bigint') {
-                return new BigIntValue(val);
-            } else {
-                throw new Error('Unsupported data representation');
-            }
-        }));
+    public findIndex(predicate: (value: bigint, index: number, obj: any[]) => boolean): number {
+        return Array.prototype.findIndex.call(this, predicate);
+    }
+
+    public forEach(callbackfn: (value: bigint, index: number, array: any[]) => void): void {
+        Array.prototype.forEach.call(this, callbackfn);
     }
 
     public compareTo(other: Tuple): number {
-        const p = this.findIndex((_, i) => this[i].compareTo(other[i]) != 0);
-        return p < 0 ? 0 : this[p].compareTo(other[p]);
+        const p = this.findIndex((_, i) => this[i] != other[i]);
+        return p < 0 ? 0 : Number(this[p] - other[p]);
     }
 
-    public get length(): number {
-        return this._length;
-    }
-
-    [Symbol.toStringTag](): string {
-        const result = Array.from(this).map(v => v.valueOf());
+    /**
+     * Returns a string representation of the tuple.
+     * @param schema The schema to be used to format the tuple's attributes.
+     */
+    public toString(schema: Array<Attribute>): string {
+        const result = schema.map((attr, idx) => attr.valueOf(this[idx]));
         return `(${result.join(", ")})`;
+    }
+
+    /**
+     * Returns an object representation of the tuple.
+     * @param schema The schema to be used to format the tuple's attributes.
+     */
+    public toObject(schema: Array<Attribute>): { [attr: string]: string | number | boolean } {
+        return Object.assign({}, ...schema.map((attr, idx) => ({ [attr.name]: attr.valueOf(this[idx]) })));
     }
 }

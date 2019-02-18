@@ -31,11 +31,11 @@ export class TransactionLog {
         }
     }
 
-    public handle(type: number, schema: ObjectSchema, handler: (tx: any) => void): void {
+    public handle<T>(type: number, schema: ObjectSchema, handler: (tx: T) => void): void {
         this.handlers[type] = { schema: schema, handler: handler };
     }
 
-    public write(id: number, tx: any): void {
+    public write<T>(id: number, tx: T): void {
         const buf = this.handlers[id].schema.encode(tx, id);
         appendFile(this.fd, buf, err => {
             if (!!err) {

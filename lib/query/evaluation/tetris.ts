@@ -1,5 +1,4 @@
-import { Box, Database, Relation } from "../../database";
-import { WILDCARD } from "../../database/constants";
+import { Box, Database, Relation, Tuple, Attribute } from "../../database";
 import { CDS } from "./cds";
 
 interface CQAtomLegacy {
@@ -10,18 +9,18 @@ interface CQAtomLegacy {
 export class Tetris {
     private kb: CDS;
 
-    constructor(private db: Database) {
+    constructor(private db: Database, private schema: Array<Attribute>) {
         this.kb = new CDS();
     }
 
-    private gaps(atoms: Array<CQAtomLegacy>, tuple: number[], SAO: number[]): Box[] {
+    private gaps(atoms: Array<CQAtomLegacy>, tuple: Tuple, SAO: number[]): Box[] {
         const C = new Array<Box>();
         atoms.forEach(atom => {
             const { rel, vars } = atom;
             const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
-            const B = this.db.relation(rel).gaps(_tuple).map(b => new Box(SAO.map(v => {
+            const B = this.db.relation(rel).gaps(Tuple.from(_tuple)).map(b => Box.from(SAO.map((v, i) => {
                 const pos = vars.indexOf(v);
-                return pos < 0 ? WILDCARD : b.at(pos);
+                return pos < 0 ? this.schema[i].wildcard : b[pos];
             })));
             C.push(...B);
         });
@@ -32,26 +31,22 @@ export class Tetris {
         const a = this.kb.witness(b);
         if (!!a) {
             return [true, a];
-        }
-        else if (b.isPoint()) {
+        } else if (b.isTuple(this.schema)) {
             return [false, b];
-        }
-        else {
-            let [b1, b2] = b.split();
+        } else {
+            let [b1, b2] = b.split(this.schema);
 
             let [v1, w1] = this.probe(b1);
             if (!v1) {
                 return [false, w1];
-            }
-            else if (w1.contains(b)) {
+            } else if (w1.contains(b)) {
                 return [true, w1];
             }
 
             let [v2, w2] = this.probe(b2);
             if (!v2) {
                 return [false, w2];
-            }
-            else if (w2.contains(b)) {
+            } else if (w2.contains(b)) {
                 return [true, w2];
             }
 
@@ -63,13 +58,14 @@ export class Tetris {
 
     public evaluate(head: number[], body: Array<CQAtomLegacy>, result: Relation) {
         const SAO = [...new Set(body.flatMap(atom => atom.vars))];
-        const all: Box = Box.all(SAO.length); // a box covering the entire space
+        const all = Box.from(this.schema.map(attr => attr.wildcard));
 
         let [v, w] = this.probe(all);
         while (!v) {
-            let B = this.gaps(body, w.point(), SAO);
+            const _tuple = w.tuple(this.schema);
+            let B = this.gaps(body, _tuple, SAO);
             if (B.length == 0) {
-                result.insert(head.map(v => w.point()[SAO.indexOf(v)]));
+                result.insert(Tuple.from(head.map(v => _tuple[SAO.indexOf(v)])));
                 B = [w];
             }
             this.kb.insert(...B);

@@ -35,12 +35,12 @@ id        "identifier" = [A-Za-z_][A-Za-z0-9_]* { return text() }
 
 /* literals */
 literal  "literal"         = lint / lstring/ lchar / lbool
-lint     "integer literal" = ([1-9][0-9]* / "0") { return Number(text()) }
+lint     "integer literal" = ([1-9][0-9]* / "0") { return BigInt(text()) }
 lstring  "string literal"  = dquote s:[^\"]* dquote { return [...s].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n) }
-lchar    "char literal"    = squote s:[^\'] squote { return s.charCodeAt(0) }
+lchar    "char literal"    = squote s:[^\'] squote { return BigInt(s.charCodeAt(0)) }
 lbool    "bool literal"    = ltrue / lfalse
-ltrue    "true"            = "true"i { return 1 }
-lfalse   "false"           = "false"i { return 0 }
+ltrue    "true"            = "true"i { return 1n }
+lfalse   "false"           = "false"i { return 0n }
 
 /* types */
 type     "type"    = tint / tstring / tchar / tbool

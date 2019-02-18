@@ -1,16 +1,12 @@
-type Literal = number | bigint;
+import { IAttributeLike } from "../../database";
+
+type Literal = bigint;
 type VariableName = string;
 
 declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select" }
 declare enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 declare enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 declare enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
-
-interface IAttrSpec {
-    name: string;
-    type: DataType;
-    width: number;
-}
 
 interface IValue<V> {
     type: ValueType;
@@ -36,7 +32,7 @@ interface ICQ {
 
 interface ICreateCQ extends ICQ {
     rel: string;
-    attrs: Array<IAttrSpec>;
+    attrs: Array<IAttributeLike>;
 }
 
 interface IInsertCQ extends ICQ {

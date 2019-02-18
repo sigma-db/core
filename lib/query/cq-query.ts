@@ -1,4 +1,4 @@
-﻿import { IAttribute, Database, DataType, Relation, ISchema } from "../database";
+﻿import { Attribute, Database, DataType, Relation, ISchema, Tuple } from "../database";
 import { IQuery } from "./index";
 import { Tetris } from "./evaluation/tetris";
 import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName, Literal } from "./parsers/cq";
@@ -46,7 +46,7 @@ class CreateCQ implements IQuery {
     constructor(private query: ICreateCQ) { }
 
     public execute(db: Database): void {
-        db.createRelation(this.query.rel, this.query.attrs);
+        db.createRelation(this.query.rel, this.query.attrs.map(spec => Attribute.from(spec)));
     }
 }
 
@@ -54,15 +54,16 @@ class InsertCQ implements IQuery {
     constructor(private query: IInsertCQ) { }
 
     public execute(db: Database): void {
+        let raw: Array<Literal>;
         if (this.query.tuple.type == TupleType.UNNAMED) {
             const tuple = this.query.tuple;
-            const raw = tuple.vals.map(v => v.val);
-            db.relation(this.query.rel).insert(raw);
+            raw = tuple.vals.map(v => v.val);
         } else {
             const { vals } = <ITuple<INamedValue<Literal>>>this.query.tuple;
-            const raw = db.relation(this.query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
-            db.relation(this.query.rel).insert(raw);
+            raw = db.relation(this.query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
         }
+        const _tuple = Tuple.from(raw);
+        db.relation(this.query.rel).insert(_tuple);
     }
 }
 
@@ -75,7 +76,7 @@ class SelectCQ implements IQuery {
                 return {
                     rel: atom.rel,
                     vars: atom.vals.map((v, i) => {
-                        const { type, width } = schema[atom.rel][i];
+                        const { type, width } = schema[atom.rel].schema[i];
                         if (v.type == ValueType.VARIABLE) {
                             return varset.variable(type, width, <string>v.val);
                         } else {
@@ -105,19 +106,15 @@ class SelectCQ implements IQuery {
     public execute(db: Database): Relation {
         const varset = new CQValueSet();
         const atoms = this.resolve(this.query.body, db.schema, varset);
-        const attrs = this.query.attrs.map(_attr => {
-            const { attr, val } = (<INamedValue<VariableName>>_attr);
-            return <IAttribute>{
-                name: attr,
-                type: varset.get(val).type,
-                width: varset.get(val).width
-            };
+        const schema = this.query.attrs.map(_attr => {
+            const { attr, val } = <INamedValue<VariableName>>_attr;
+            return Attribute.create(attr, varset.get(val).type, varset.get(val).width);
         });
-        const result = Relation.create(this.query.name, attrs, { isLogged: false, throwsOnDuplicate: false });
+        const result = Relation.create(this.query.name, schema, { throwsOnDuplicate: false });
 
         const _head = this.query.attrs.map(attr => varset.get(<string>attr.val).id);
         const _body = atoms.map(atom => ({ rel: atom.rel, vars: atom.vars.map(v => v.id) }));
-        const tetris = new Tetris(db);
+        const tetris = new Tetris(db, schema);
         tetris.evaluate(_head, _body, result);
 
         return result.freeze();

@@ -1,4 +1,4 @@
-﻿import { Box } from '../../database';
+﻿import { Box, Relation } from '../../database';
 import { DyadicTrie } from '../../util';
 
 export class CDS {
@@ -26,8 +26,8 @@ export class CDS {
      * @param box The box to check
      */
     public witnessAll(box: Box): Box[] {
-        const _cover = (dim: number, trie: DyadicTrie<any>): number[][] => {
-            const sub = trie.search(box.at(dim));
+        const _cover = (dim: number, trie: DyadicTrie<any>): bigint[][] => {
+            const sub = trie.search(box[dim]);
             if (dim == box.length - 1) {
                 return sub.map(([_int,]) => [_int]);
             }
@@ -36,7 +36,7 @@ export class CDS {
             }
         };
 
-        return _cover(0, this.data).map(b => new Box(b));
+        return _cover(0, this.data).map(b => Box.from(b));
     }
 
     /**

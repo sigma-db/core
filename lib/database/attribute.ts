@@ -1,15 +1,33 @@
-import { NumberValue, BigIntValue, IValue } from "./value";
-
 export enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
 
-export interface IAttribute {
+export interface IAttributeLike {
     name: string;
     type: DataType;
     width: number;
 }
 
-abstract class Attribute<T> implements IAttribute {
-    constructor(protected _name: string, protected _type: DataType, protected _width: number) { }
+export abstract class Attribute implements IAttributeLike {
+    constructor(private _name: string, private _type: DataType, private _width: number) { }
+
+    public static create(name: string, type: DataType, width: number): Attribute {
+        switch (type) {
+            case DataType.INT: return new IntAttribute(name);
+            case DataType.CHAR: return new CharAttribute(name);
+            case DataType.STRING: return new StringAttribute(name, width);
+            case DataType.BOOL: return new BoolAttribute(name);
+            default: throw new Error('Unsupported data type!');
+        }
+    }
+
+    public static from(attr: IAttributeLike): Attribute {
+        switch (attr.type) {
+            case DataType.INT: return Object.setPrototypeOf(attr, IntAttribute.prototype);
+            case DataType.CHAR: return Object.setPrototypeOf(attr, CharAttribute.prototype);
+            case DataType.STRING: return Object.setPrototypeOf(attr, StringAttribute.prototype);
+            case DataType.BOOL: return Object.setPrototypeOf(attr, BoolAttribute.prototype);
+            default: throw new Error('Unsupported data type!');
+        }
+    }
 
     public get name(): string {
         return this._name;
@@ -23,87 +41,118 @@ abstract class Attribute<T> implements IAttribute {
         return this._width;
     }
 
-    public abstract get min(): IValue<T>;
-    public abstract get max(): IValue<T>;
+    public abstract get exp(): number;
+    public abstract get min(): bigint;
+    public abstract get max(): bigint;
+    public abstract get wildcard(): bigint;
 
-    public abstract valueOf(value: IValue<any>): number | string | boolean;
+    public abstract valueOf(value: bigint): number | string | boolean;
 }
 
-export type TAttribute = Attribute<number> | Attribute<bigint>;
-
-export class IntAttribute extends Attribute<number> {
+class IntAttribute extends Attribute {
     constructor(name: string) {
         super(name, DataType.INT, 4);
     }
 
-    public get min(): NumberValue {
-        return new NumberValue(0);
+    public get exp(): number {
+        return 31;
     }
 
-    public get max(): NumberValue {
-        return new NumberValue(1 << 31);
+    public get min(): bigint {
+        return 0n;
     }
 
-    public valueOf(value: NumberValue): number {
-        return value.val;
+    public get max(): bigint {
+        return 0x80000000n; // 2 ** 31
+    }
+
+    public get wildcard(): bigint {
+        return 1n;
+    }
+
+    public valueOf(value: bigint): number {
+        return Number(value);
     }
 }
 
-export class BoolAttribute extends Attribute<number> {
+class BoolAttribute extends Attribute {
     constructor(name: string) {
         super(name, DataType.BOOL, 1);
     }
 
-    public get min(): NumberValue {
-        return new NumberValue(0);
+    public get exp(): number {
+        return 1;
     }
 
-    public get max(): NumberValue {
-        return new NumberValue(2);
+    public get min(): bigint {
+        return 0n;
     }
 
-    public valueOf(value: NumberValue): boolean {
-        return Boolean(value.val);
+    public get max(): bigint {
+        return 2n;
+    }
+
+    public get wildcard(): bigint {
+        return 1n;
+    }
+
+    public valueOf(value: bigint): boolean {
+        return Boolean(value);
     }
 }
 
-export class CharAttribute extends Attribute<number> {
+class CharAttribute extends Attribute {
     constructor(name: string) {
         super(name, DataType.CHAR, 1);
     }
 
-    public get min(): NumberValue {
-        return new NumberValue(0);
+    public get exp(): number {
+        return 8;
     }
 
-    public get max(): NumberValue {
-        return new NumberValue(1 << 8);
+    public get min(): bigint {
+        return 0n;
     }
 
-    public valueOf(value: NumberValue): string {
-        return String.fromCharCode(value.val);
+    public get max(): bigint {
+        return 256n;
+    }
+
+    public get wildcard(): bigint {
+        return 1n;
+    }
+
+    public valueOf(value: bigint): string {
+        return String.fromCharCode(Number(value));
     }
 }
 
-export class StringAttribute extends Attribute<bigint> {
+class StringAttribute extends Attribute {
     constructor(name: string, width: number) {
         super(name, DataType.STRING, width);
     }
 
-    public get min(): BigIntValue {
-        return new BigIntValue(0n);
+    public get exp(): number {
+        return super.width * 8;
     }
 
-    public get max(): BigIntValue {
-        return new BigIntValue(1n << BigInt(this._width * 8));
+    public get min(): bigint {
+        return 0n;
     }
 
-    public valueOf(value: BigIntValue): string {
+    public get max(): bigint {
+        return 1n << BigInt(super.width * 8);
+    }
+
+    public get wildcard(): bigint {
+        return 1n;
+    }
+
+    public valueOf(value: bigint): string {
         const codes = new Array();
-        let v = value.val;
-        while (v > 0) {
-            codes.push(Number(v & 0xFFn));
-            v >>= 8n;
+        while (value > 0) {
+            codes.push(Number(value & 0xFFn));
+            value >>= 8n;
         }
         return String.fromCharCode(...codes.reverse());
     }
