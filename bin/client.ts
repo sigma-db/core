@@ -14,7 +14,6 @@ const repl = createInterface({
 
 repl.prompt();
 repl.on('line', input => {
-    console.time("Query Evaluation");
     try {
         const query = Query.parse(input);
         const result = query.execute(db);
@@ -29,7 +28,6 @@ repl.on('line', input => {
     } catch (e) {
         console.log(e);
     }
-    console.timeEnd("Query Evaluation");
     repl.prompt();
 });
 repl.on('close', db.close);

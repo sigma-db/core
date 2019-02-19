@@ -16,6 +16,7 @@ export abstract class Relation {
     protected _name: string;
     protected _schema: TSchema;
     protected _tuples: SkipList<Tuple>;
+    private _boundaries: [Array<bigint>, Array<bigint>, Array<number>, Array<bigint>];
 
     /**
      * Default options to create the relation with if not specified differently by the user
@@ -29,6 +30,12 @@ export abstract class Relation {
         this._name = name;
         this._schema = schema;
         this._tuples = tuples;
+        this._boundaries = [
+            this._schema.map(attr => attr.min - 1n),
+            this._schema.map(attr => attr.max),
+            this._schema.map(attr => attr.exp),
+            this._schema.map(attr => attr.wildcard)
+        ];
     }
 
     /**
@@ -46,6 +53,19 @@ export abstract class Relation {
         } else {
             return new RelationTemp(name, schema, tuples);
         }
+    }
+
+    /**
+     * Creates a relation of the given name and schema from an existing set of tuples
+     * @param name The name of the new relation
+     * @param schema The schema of the new relation
+     * @param tuples The existing set of tuples to create the relation from
+     * @param options Options specifying the behaviour of the relation
+     */
+    public static from(name: string, schema: TSchema, tuples: SkipList<Tuple>, options = Relation.defaultOptions): Relation {
+        const rel = Relation.create(name, schema, options);
+        rel._tuples = tuples;
+        return rel;
     }
 
     /**
@@ -106,10 +126,8 @@ export abstract class Relation {
      */
     public gaps(tuple: Tuple): Array<Box> {
         const gaps: Array<Box> = [];
+        const [min, max, exp, wildcard] = this._boundaries;
         const [pred, succ] = this._tuples.find(tuple);
-
-        const max = this._schema.map(attr => attr.max);
-        const wildcard = this._schema.map(attr => attr.wildcard);
 
         if (!pred && !succ) {
             // empty relation --> return box covering entire (sub)space
@@ -119,7 +137,7 @@ export abstract class Relation {
             for (let j = 0; j < this.arity; j++) {
                 let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], this._schema[j].max, this._schema[j].exp).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
             }
         } else if (succ.compareTo(tuple) == 0) {
             // probe tuple is in relation --> return empty box set
@@ -128,7 +146,7 @@ export abstract class Relation {
             for (let j = 0; j < this.arity; j++) {
                 let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(this._schema[j].min - 1n, succ[j], this._schema[j].exp).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
             }
         } else {
             // probe tuple is between pred and succ
@@ -137,18 +155,18 @@ export abstract class Relation {
             for (let j = s + 1; j < this.arity; j++) {
                 let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], this._schema[j].max, this._schema[j].exp).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
             }
 
             for (let j = s + 1; j < this.arity; j++) {
                 let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(this._schema[j].min - 1n, succ[j], this._schema[j].exp).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
             }
 
             let front = pred.slice(0, s).map((z, i) => z ^ max[i]);
             let back = wildcard.slice(s + 1);
-            Dyadic.get(pred[s], succ[s], this._schema[s].exp).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+            Dyadic.get(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
         }
 
         return gaps;

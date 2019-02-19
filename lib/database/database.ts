@@ -47,7 +47,11 @@ export abstract class Database {
      * @param rel The name of the relation to retrieve
      */
     public relation(rel: string): Relation {
-        return this.relations[rel];
+        if (!!this.relations[rel]) {
+            return this.relations[rel];
+        } else {
+            throw new Error(`Relation ${rel} does not exist in this database.`);
+        }
     }
 
     /**

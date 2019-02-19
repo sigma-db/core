@@ -1,49 +1,16 @@
-﻿import { Attribute, Database, DataType, Relation, ISchema, Tuple } from "../database";
-import { IQuery } from "./index";
+﻿import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
 import { Tetris } from "./evaluation/tetris";
-import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName, Literal, IInfoCQ } from "./parsers/cq";
+import { IQuery } from "./index";
+import { IAtom, ICreateCQ, IInfoCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, Literal, parse, VariableName } from "./parsers/cq";
+import { ValueSet, Variable } from "./variable";
 
 enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 
-interface CQAtom {
+interface Atom {
     rel: string;
-    vars: Array<CQVariable>;
-}
-
-class CQVariable {
-    constructor(private _id: number, private _type: DataType, private _width: number) { }
-
-    public get id(): number {
-        return this._id;
-    }
-
-    public get type(): DataType {
-        return this._type;
-    }
-
-    public get width(): number {
-        return this._width;
-    }
-}
-
-class CQValueSet {
-    private count: number = 0;
-    private vars: { [name: string]: CQVariable } = {};
-
-    public variable(type: DataType, width: number, name: string = `@${this.count}`): CQVariable {
-        this.vars[name] = this.vars[name] || new CQVariable(this.count++, type, width);
-        return this.vars[name];
-    }
-
-    public get(name: string): CQVariable {
-        return this.vars[name];
-    }
-
-    public schema(): Array<Attribute> {
-        return Object.entries(this.vars).sort(([, v], [, w]) => v.id - w.id).map(([name, cqvar]) => Attribute.create(name, cqvar.type, cqvar.width));
-    }
+    vars: Array<Variable>;
 }
 
 class CreateCQ implements IQuery {
@@ -58,11 +25,6 @@ class InsertCQ implements IQuery {
     constructor(private query: IInsertCQ) { }
 
     public execute(db: Database): void {
-        const rel = db.relation(this.query.rel);
-        if (!rel) {
-            throw new Error(`Relation ${rel} does not exist in the selected database.`);
-        }
-
         let raw: Array<Literal>;
         if (this.query.tuple.type == TupleType.UNNAMED) {
             const tuple = this.query.tuple;
@@ -79,15 +41,16 @@ class InsertCQ implements IQuery {
 class SelectCQ implements IQuery {
     constructor(private query: ISelectCQ) { }
 
-    private resolve(atoms: Array<IAtom>, schema: ISchema, varset: CQValueSet): Array<CQAtom> {
-        return atoms.map(atom => {
+    private resolve(atoms: Array<IAtom>, schema: ISchema): [ValueSet, Array<Atom>] {
+        const valset = new ValueSet();
+        const cqatoms = atoms.map(atom => {
             if (atom.type == TupleType.UNNAMED) {
                 return {
                     rel: atom.rel,
                     vars: atom.vals.map((v, i) => {
                         const { type, width } = schema[atom.rel].schema[i];
                         if (v.type == ValueType.VARIABLE) {
-                            return varset.variable(type, width, <string>v.val);
+                            return valset.variable(type, width, <string>v.val);
                         } else {
                             throw new Error("Constants are not yet supported!");
                         }
@@ -100,9 +63,9 @@ class SelectCQ implements IQuery {
                     vars: schema[rel].schema.map(spec => {
                         const v = vals.find(v => (<INamedValue<VariableName>>v).attr === spec.name);
                         if (!v) {
-                            return varset.variable(spec.type, spec.width);
+                            return valset.variable(spec.type, spec.width);
                         } else if (v.type == ValueType.VARIABLE) {
-                            return varset.variable(spec.type, spec.width, <string>v.val);
+                            return valset.variable(spec.type, spec.width, <string>v.val);
                         } else {
                             throw new Error("Constants are not yet supported!");
                         }
@@ -110,56 +73,56 @@ class SelectCQ implements IQuery {
                 }
             }
         });
+        return [valset, cqatoms];
     }
 
     public execute(db: Database): Relation {
-        const varset = new CQValueSet();
-        const atoms = this.resolve(this.query.body, db.schema, varset);
-        const varSchema = varset.schema();
-        const resultSchema = this.query.attrs.map(_attr => {
+        const [valset, atoms] = this.resolve(this.query.body, db.schema);
+        const tetris = new Tetris(db, valset.schema());
+        const head = this.query.attrs.map(attr => valset.get(<string>attr.val));
+        const tuples = tetris.evaluate(head, valset.variables, atoms);
+        const schema = this.query.attrs.map(_attr => {
             const { attr, val } = <INamedValue<VariableName>>_attr;
-            return Attribute.create(attr, varset.get(val).type, varset.get(val).width);
+            return Attribute.create(attr, valset.get(val).type, valset.get(val).width);
         });
-        const result = Relation.create(this.query.name, resultSchema, { throwsOnDuplicate: false });
-
-        const _head = this.query.attrs.map(attr => varset.get(<string>attr.val).id);
-        const _body = atoms.map(atom => ({ rel: atom.rel, vars: atom.vars.map(v => v.id) }));
-        const tetris = new Tetris(db, varSchema);
-        tetris.evaluate(_head, _body, result);
-
-        return result.freeze();
+        const result = Relation.from(this.query.name, schema, tuples).freeze();
+        return result;
     }
 }
 
 class InfoCQ implements IQuery {
+    private static readonly DATABASE_SCHEMA = [
+        Attribute.create("Relation", DataType.STRING, 32),
+        Attribute.create("Arity", DataType.INT, 4),
+        Attribute.create("Cardinality", DataType.INT, 4)
+    ];
+    private static readonly RELATION_SCHEMA = [
+        Attribute.create("Attribute", DataType.STRING, 32),
+        Attribute.create("Data Type", DataType.STRING, 8),
+        Attribute.create("Width", DataType.INT, 4)
+    ];
+
     constructor(private query: IInfoCQ) { }
 
-    public execute(db: Database): Relation {
-        const str2bits = (s: string) => [...s].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n);
-        let result: Relation;
+    private str2bits(str: string) {
+        return [...str].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n);
+    }
 
+    public execute(db: Database): Relation {
+        let result: Relation;
         if (!this.query.rel) {
-            result = Relation.create("Database Schema", [
-                Attribute.create("Relation", DataType.STRING, 32),
-                Attribute.create("Arity", DataType.INT, 4),
-                Attribute.create("Cardinality", DataType.INT, 4)
-            ]);
+            result = Relation.create("Database Schema", InfoCQ.DATABASE_SCHEMA);
             Object.entries(db.schema).forEach(([, rel]) => {
-                const tuple = Tuple.from([str2bits(rel.name), BigInt(rel.arity), BigInt(rel.size)]);
+                const tuple = Tuple.from([this.str2bits(rel.name), BigInt(rel.arity), BigInt(rel.size)]);
                 result.insert(tuple);
             });
         } else {
-            result = Relation.create(`Relation Schema for "${this.query.rel}"`, [
-                Attribute.create("Attribute", DataType.STRING, 32),
-                Attribute.create("Data Type", DataType.STRING, 8),
-                Attribute.create("Width", DataType.INT, 4)
-            ]);
+            result = Relation.create(`Relation Schema of "${this.query.rel}"`, InfoCQ.RELATION_SCHEMA);
             db.relation(this.query.rel).schema.forEach(attr => {
-                const tuple = Tuple.from([str2bits(attr.name), str2bits(attr.type), BigInt(attr.width)]);
+                const tuple = Tuple.from([this.str2bits(attr.name), this.str2bits(attr.type), BigInt(attr.width)]);
                 result.insert(tuple);
             });
         }
-
         return result.freeze();
     }
 }

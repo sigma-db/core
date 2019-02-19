@@ -1,30 +1,37 @@
-import { Box, Database, Relation, Tuple, Attribute } from "../../database";
+import { Attribute, Box, Database, Tuple } from "../../database";
+import { SkipList } from "../../util";
+import { Variable } from "../variable";
 import { CDS } from "./cds";
 
-interface CQAtomLegacy {
+interface Atom {
     rel: string;
-    vars: number[];
+    vars: Array<Variable>;
 }
 
 export class Tetris {
     private kb: CDS;
+    private wildcard: Array<bigint>;
 
     constructor(private db: Database, private schema: Array<Attribute>) {
         this.kb = new CDS();
+        this.wildcard = schema.map(attr => attr.wildcard);
     }
 
-    private gaps(atoms: Array<CQAtomLegacy>, tuple: Tuple, SAO: number[]): Box[] {
-        const C = new Array<Box>();
+    private gaps(atoms: Array<Atom>, tuple: Tuple, SAO: Array<Variable>): number {
+        let gapsCnt = 0;
         atoms.forEach(atom => {
             const { rel, vars } = atom;
             const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
-            const B = this.db.relation(rel).gaps(Tuple.from(_tuple)).map(b => Box.from(SAO.map((v, i) => {
-                const pos = vars.indexOf(v);
-                return pos < 0 ? this.schema[i].wildcard : b[pos];
-            })));
-            C.push(...B);
+            this.db.relation(rel).gaps(Tuple.from(_tuple)).forEach(box => {
+                const _box = Box.from(SAO.map((v, i) => {
+                    const pos = vars.indexOf(v);
+                    return pos < 0 ? this.wildcard[i] : box[pos];
+                }));
+                this.kb.insert(_box);
+                gapsCnt++;
+            });
         });
-        return C;
+        return gapsCnt;
     }
 
     private probe(b: Box): [boolean, Box] {
@@ -56,20 +63,22 @@ export class Tetris {
         }
     }
 
-    public evaluate(head: number[], body: Array<CQAtomLegacy>, result: Relation) {
-        const SAO = this.schema.map((_, i) => i);
+    public evaluate(head: Array<Variable>, variables: Array<Variable>, atoms: Array<Atom>): SkipList<Tuple> {
+        const SAO = variables;
         const all = Box.from(this.schema.map(attr => attr.wildcard));
+        const result = new SkipList<Tuple>(4, 0.25, false);
 
         let [v, w] = this.probe(all);
         while (!v) {
-            const _tuple = w.tuple(this.schema);
-            let B = this.gaps(body, _tuple, SAO);
-            if (B.length == 0) {
-                result.insert(Tuple.from(head.map(v => _tuple[SAO.indexOf(v)])));
-                B = [w];
+            const tuple = w.tuple(this.schema);
+            const gapsCnt = this.gaps(atoms, tuple, SAO);
+            if (gapsCnt == 0) {
+                result.insert(Tuple.from(head.map(v => tuple[SAO.indexOf(v)])));
+                this.kb.insert(w);
             }
-            this.kb.insert(...B);
             [v, w] = this.probe(all);
         }
+
+        return result;
     }
 }
