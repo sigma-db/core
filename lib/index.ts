@@ -1,2 +1,2 @@
-﻿export { Database } from './database';
+﻿export { Attribute, Database, DataType, Relation, Tuple } from './database';
 export { Query } from './query';

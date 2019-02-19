@@ -13,6 +13,22 @@ export class Tuple implements ArrayLike<bigint>, IComparable<Tuple> {
         return Object.setPrototypeOf(tuple, Tuple.prototype);
     }
 
+    /**
+     * Turns a tuple from its human-readable representation into its internal representation
+     * @param tuple The human-readable tuple
+     */
+    public static create(tuple: Array<number | string | boolean>): Tuple {
+        const _tuple = tuple.map(val => {
+            switch (typeof val) {
+                case "number": return BigInt(val);
+                case "string": return [...val].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n);
+                case "boolean": return val ? 1n : 0n;
+                default: throw new Error("Unsupported data type");
+            }
+        });
+        return Tuple.from(_tuple);
+    }
+
     public slice(start?: number, end?: number): Array<bigint> {
         return Array.prototype.slice.call(this, start, end);
     }

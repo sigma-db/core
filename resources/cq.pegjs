@@ -1,5 +1,5 @@
-﻿start = _ q:query _ { return q }
-query = info_stmt / create_stmt / insert_stmt / select_stmt
+﻿query   "query"      = _ q:stmt _ { return q }
+stmt    "statement"  = info_stmt / create_stmt / insert_stmt / select_stmt
 
 /* info */
 info_stmt = r:rel_name? _ question { return { type: "info", rel: r } }
@@ -67,4 +67,4 @@ equals   "="  = "="
 question "?"  = "?"
 
 /* whitespace */
-_ "whitespace" = [ \t]*
+_  "whitespace" = [ \t]*

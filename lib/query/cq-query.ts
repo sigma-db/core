@@ -104,22 +104,18 @@ class InfoCQ implements IQuery {
 
     constructor(private query: IInfoCQ) { }
 
-    private str2bits(str: string) {
-        return [...str].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n);
-    }
-
     public execute(db: Database): Relation {
         let result: Relation;
         if (!this.query.rel) {
             result = Relation.create("Database Schema", InfoCQ.DATABASE_SCHEMA);
             Object.entries(db.schema).forEach(([, rel]) => {
-                const tuple = Tuple.from([this.str2bits(rel.name), BigInt(rel.arity), BigInt(rel.size)]);
+                const tuple = Tuple.create([rel.name, rel.arity, rel.size]);
                 result.insert(tuple);
             });
         } else {
             result = Relation.create(`Relation Schema of "${this.query.rel}"`, InfoCQ.RELATION_SCHEMA);
             db.relation(this.query.rel).schema.forEach(attr => {
-                const tuple = Tuple.from([this.str2bits(attr.name), this.str2bits(attr.type), BigInt(attr.width)]);
+                const tuple = Tuple.create([attr.name, attr.type, attr.width]);
                 result.insert(tuple);
             });
         }

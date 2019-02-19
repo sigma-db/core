@@ -9,11 +9,11 @@ export interface IAttributeLike {
 export abstract class Attribute implements IAttributeLike {
     constructor(private _name: string, private _type: DataType, private _width: number) { }
 
-    public static create(name: string, type: DataType, width: number): Attribute {
+    public static create(name: string, type: DataType, width?: number): Attribute {
         switch (type) {
-            case DataType.INT: return new IntAttribute(name);
+            case DataType.INT: return new IntAttribute(name, width || 4);
             case DataType.CHAR: return new CharAttribute(name);
-            case DataType.STRING: return new StringAttribute(name, width);
+            case DataType.STRING: return new StringAttribute(name, width || 32);
             case DataType.BOOL: return new BoolAttribute(name);
             default: throw new Error('Unsupported data type!');
         }
@@ -50,8 +50,8 @@ export abstract class Attribute implements IAttributeLike {
 }
 
 class IntAttribute extends Attribute {
-    constructor(name: string) {
-        super(name, DataType.INT, 4);
+    constructor(name: string, width: number) {
+        super(name, DataType.INT, width);
     }
 
     public get exp(): number {

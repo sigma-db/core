@@ -30,4 +30,4 @@ repl.on('line', input => {
     }
     repl.prompt();
 });
-repl.on('close', db.close);
+repl.on('close', () => db.close());

@@ -65,7 +65,7 @@ export class Tetris {
 
     public evaluate(head: Array<Variable>, variables: Array<Variable>, atoms: Array<Atom>): SkipList<Tuple> {
         const SAO = variables;
-        const all = Box.from(this.schema.map(attr => attr.wildcard));
+        const all = Box.from(this.wildcard);
         const result = new SkipList<Tuple>(4, 0.25, false);
 
         let [v, w] = this.probe(all);

@@ -33,29 +33,38 @@ We discern three types of queries, whose syntax we outline by example:
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
 
 ### Library
-tbd.
-<!-- The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all division heads with at least one employee earning 4,200.
+The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
 ```TypeScript
-import { Database, Query } from "sigma";
-import { INT, CHAR } from "sigma/types";
+import { Attribute, Database, Query, Relation, Tuple } from "sigma";
 
 const db = Database.open(); // using a temporary database
 
-db.createRelation("Employee", [ INT("id"), STRING("name"), INT("salary"), INT("divId") ]);
-db.createRelation("Division", [ INT("id"), STRING("name"), INT("head") ]);
+db.createRelation("Employee", [
+    Attribute.create("id", DataType.INT),
+    Attribute.create("name", DataType.STRING, 32),
+    Attribute.create("salary", DataType.INT),
+    Attribute.create("division", DataType.INT),
+]);
+db.createRelation("Division", [
+    Attribute.create("id", DataType.INT),
+    Attribute.create("name", DataType.STRING, 64),
+    Attribute.create("head", DataType.INT),
+]);
 
-db.relation("Employee").insert(0, "David Luis Wiegandt", 4200, 2);
-db.relation("Employee").insert(1, "Marc Seibert", 4711, 2);
-db.relation("Division").insert(2, "Development", 1);
+db.relation("Division").insert(Tuple.create(0, "Research and Development", 1));
+db.relation("Division").insert(Tuple.create(1, "Marketing", 0));
+db.relation("Employee").insert(Tuple.create(0, "Jack Walls", 8360, 1));
+db.relation("Employee").insert(Tuple.create(1, "Nicole Smith", 7120, 0));
+db.relation("Employee").insert(Tuple.create(2, "Joan Waters", 2700, 0));
+db.relation("Employee").insert(Tuple.create(3, "David Brown", 4200, 1));
+db.relation("Employee").insert(Tuple.create(4, "Marc Wilson", 4200, 1));
 
-const result = db.query("(head=y) <- Employee(id=x, name=y, divId=z), Employee(name="David Luis Wiegandt", divId=z), Division(id=z, head=x)");
-console.log(result.tuples);
-
-console.table();
+const result = db.query('(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)');
+console.table([...result.tuples()])
 
 db.close();
-``` -->
+```
 
 ## Limitations
 There are quite a few functionalities essential to a real-world DBMS we do *not* support as of now, including:

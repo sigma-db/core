@@ -6,7 +6,6 @@ type VariableName = string;
 declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 declare enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 declare enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
-declare enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
 
 interface IValue<V> {
     type: ValueType;
