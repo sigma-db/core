@@ -1,5 +1,8 @@
 ﻿start = _ q:query _ { return q }
-query = create_stmt / insert_stmt / select_stmt
+query = info_stmt / create_stmt / insert_stmt / select_stmt
+
+/* info */
+info_stmt = r:rel_name? _ question { return { type: "info", rel: r } }
 
 /* create */
 create_stmt = r:rel_name _ colon _ lbrace _ head:attr_spec tail:(_ comma _ @attr_spec)* _ rbrace { return { type: "create", rel: r, attrs: [head, ...tail] } }
@@ -43,11 +46,12 @@ ltrue    "true"            = "true"i { return 1n }
 lfalse   "false"           = "false"i { return 0n }
 
 /* types */
-type     "type"    = tint / tstring / tchar / tbool
-tint     "integer" = ("integer"i / "int"i) w:(_ lbrace _ @lint _ rbrace)? { return { type: "int", width: w || 4 } }
-tstring  "string"  = "string"i w:(_ lbrace _ @lint _ rbrace)? { return { type: "string", width: w || 256 } }
-tchar    "char"    = "char"i { return { type: "char", width: 1 } }
-tbool    "bool"    = "bool"i { return { type: "bool", width: 1 } }
+type     "type"       = tint / tstring / tchar / tbool
+width    "byte width" = [1-9][0-9]* { return Number(text()) }
+tint     "integer"    = ("integer"i / "int"i) w:(_ lbrace _ @width _ rbrace)? { return { type: "int", width: w || 4 } }
+tstring  "string"     = "string"i w:(_ lbrace _ @width _ rbrace)? { return { type: "string", width: w || 256 } }
+tchar    "char"       = "char"i { return { type: "char", width: 1 } }
+tbool    "bool"       = "bool"i { return { type: "bool", width: 1 } }
 
 /* tokens */
 larrow   "<-" = "<-"
@@ -60,6 +64,7 @@ colon    ":"  = ":"
 squote   "'"  = "'"
 dquote   "\"" = "\""
 equals   "="  = "="
+question "?"  = "?"
 
 /* whitespace */
 _ "whitespace" = [ \t]*

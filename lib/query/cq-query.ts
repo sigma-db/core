@@ -1,9 +1,9 @@
 ﻿import { Attribute, Database, DataType, Relation, ISchema, Tuple } from "../database";
 import { IQuery } from "./index";
 import { Tetris } from "./evaluation/tetris";
-import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName, Literal } from "./parsers/cq";
+import { IAtom, ICreateCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, parse, VariableName, Literal, IInfoCQ } from "./parsers/cq";
 
-enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select" }
+enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 
@@ -40,6 +40,10 @@ class CQValueSet {
     public get(name: string): CQVariable {
         return this.vars[name];
     }
+
+    public schema(): Array<Attribute> {
+        return Object.entries(this.vars).sort(([, v], [, w]) => v.id - w.id).map(([name, cqvar]) => Attribute.create(name, cqvar.type, cqvar.width));
+    }
 }
 
 class CreateCQ implements IQuery {
@@ -54,6 +58,11 @@ class InsertCQ implements IQuery {
     constructor(private query: IInsertCQ) { }
 
     public execute(db: Database): void {
+        const rel = db.relation(this.query.rel);
+        if (!rel) {
+            throw new Error(`Relation ${rel} does not exist in the selected database.`);
+        }
+
         let raw: Array<Literal>;
         if (this.query.tuple.type == TupleType.UNNAMED) {
             const tuple = this.query.tuple;
@@ -106,16 +115,50 @@ class SelectCQ implements IQuery {
     public execute(db: Database): Relation {
         const varset = new CQValueSet();
         const atoms = this.resolve(this.query.body, db.schema, varset);
-        const schema = this.query.attrs.map(_attr => {
+        const varSchema = varset.schema();
+        const resultSchema = this.query.attrs.map(_attr => {
             const { attr, val } = <INamedValue<VariableName>>_attr;
             return Attribute.create(attr, varset.get(val).type, varset.get(val).width);
         });
-        const result = Relation.create(this.query.name, schema, { throwsOnDuplicate: false });
+        const result = Relation.create(this.query.name, resultSchema, { throwsOnDuplicate: false });
 
         const _head = this.query.attrs.map(attr => varset.get(<string>attr.val).id);
         const _body = atoms.map(atom => ({ rel: atom.rel, vars: atom.vars.map(v => v.id) }));
-        const tetris = new Tetris(db, schema);
+        const tetris = new Tetris(db, varSchema);
         tetris.evaluate(_head, _body, result);
+
+        return result.freeze();
+    }
+}
+
+class InfoCQ implements IQuery {
+    constructor(private query: IInfoCQ) { }
+
+    public execute(db: Database): Relation {
+        const str2bits = (s: string) => [...s].reduce((result, current) => (result << 8n) + BigInt(current.charCodeAt(0) & 0xFF), 0n);
+        let result: Relation;
+
+        if (!this.query.rel) {
+            result = Relation.create("Database Schema", [
+                Attribute.create("Relation", DataType.STRING, 32),
+                Attribute.create("Arity", DataType.INT, 4),
+                Attribute.create("Cardinality", DataType.INT, 4)
+            ]);
+            Object.entries(db.schema).forEach(([, rel]) => {
+                const tuple = Tuple.from([str2bits(rel.name), BigInt(rel.arity), BigInt(rel.size)]);
+                result.insert(tuple);
+            });
+        } else {
+            result = Relation.create(`Relation Schema for "${this.query.rel}"`, [
+                Attribute.create("Attribute", DataType.STRING, 32),
+                Attribute.create("Data Type", DataType.STRING, 8),
+                Attribute.create("Width", DataType.INT, 4)
+            ]);
+            db.relation(this.query.rel).schema.forEach(attr => {
+                const tuple = Tuple.from([str2bits(attr.name), str2bits(attr.type), BigInt(attr.width)]);
+                result.insert(tuple);
+            });
+        }
 
         return result.freeze();
     }
@@ -128,6 +171,7 @@ export class CQQuery {
             case QueryType.CREATE: return new CreateCQ(<ICreateCQ>_q);
             case QueryType.INSERT: return new InsertCQ(<IInsertCQ>_q);
             case QueryType.SELECT: return new SelectCQ(<ISelectCQ>_q);
+            case QueryType.INFO: return new InfoCQ(<IInfoCQ>_q);
             default: throw new Error("Unsupported query type.");
         }
     }

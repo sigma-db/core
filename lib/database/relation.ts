@@ -87,6 +87,20 @@ export abstract class Relation {
     }
 
     /**
+     * The name of the relation
+     */
+    public get name(): string {
+        return this._name;
+    }
+
+    /**
+     * The number of tuples in the relation
+     */
+    public get size(): number {
+        return this._tuples.size;
+    }
+
+    /**
      * Infer any gaps surrounding the given tuple within the relation
      * @param tuple The tuple to probe
      */

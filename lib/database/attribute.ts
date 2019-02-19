@@ -133,7 +133,7 @@ class StringAttribute extends Attribute {
     }
 
     public get exp(): number {
-        return super.width * 8;
+        return this.width * 8;
     }
 
     public get min(): bigint {
@@ -141,7 +141,7 @@ class StringAttribute extends Attribute {
     }
 
     public get max(): bigint {
-        return 1n << BigInt(super.width * 8);
+        return 1n << BigInt(this.width * 8);
     }
 
     public get wildcard(): bigint {

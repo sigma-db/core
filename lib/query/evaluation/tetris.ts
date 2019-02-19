@@ -57,7 +57,7 @@ export class Tetris {
     }
 
     public evaluate(head: number[], body: Array<CQAtomLegacy>, result: Relation) {
-        const SAO = [...new Set(body.flatMap(atom => atom.vars))];
+        const SAO = this.schema.map((_, i) => i);
         const all = Box.from(this.schema.map(attr => attr.wildcard));
 
         let [v, w] = this.probe(all);
