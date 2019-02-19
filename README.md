@@ -60,7 +60,7 @@ db.relation("Employee").insert(Tuple.create(2, "Joan Waters", 2700, 0));
 db.relation("Employee").insert(Tuple.create(3, "David Brown", 4200, 1));
 db.relation("Employee").insert(Tuple.create(4, "Marc Wilson", 4200, 1));
 
-const result = db.query('(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)');
+const result = Query.parse('(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)').execute(db);
 console.table([...result.tuples()])
 
 db.close();
