@@ -1,29 +1,29 @@
-import { Attribute, Box, Database, Tuple } from "../../database";
-import { SkipList } from "../../util";
-import { Variable } from "../variable";
-import { CDS } from "./cds";
+import { Attribute, Box, Tuple, Relation } from "../../../database";
+import { SkipList } from "../../../util";
+import { IAtom } from "../atom";
+import { CDS } from "../cds";
+import { ValueSet, Variable } from "../variable";
 
-interface Atom {
-    rel: string;
-    vars: Array<Variable>;
-}
-
-export class Tetris {
+class TetrisJoinImpl {
     private kb: CDS;
+    private schema: Array<Attribute>;
+    private variables: Array<Variable>;
     private wildcard: Array<bigint>;
 
-    constructor(private db: Database, private schema: Array<Attribute>) {
+    constructor(values: ValueSet) {
         this.kb = new CDS();
-        this.wildcard = schema.map(attr => attr.wildcard);
+        this.schema = values.schema();
+        this.variables = values.variables;
+        this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
-    private gaps(atoms: Array<Atom>, tuple: Tuple, SAO: Array<Variable>): number {
+    private gaps(atoms: Array<IAtom>, tuple: Tuple): number {
         let gapsCnt = 0;
         atoms.forEach(atom => {
             const { rel, vars } = atom;
-            const _tuple = vars.map(v => tuple[SAO.indexOf(v)]);
-            this.db.relation(rel).gaps(Tuple.from(_tuple)).forEach(box => {
-                const _box = Box.from(SAO.map((v, i) => {
+            const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
+            rel.gaps(Tuple.from(_tuple)).forEach(box => {
+                const _box = Box.from(this.variables.map((v, i) => {
                     const pos = vars.indexOf(v);
                     return pos < 0 ? this.wildcard[i] : box[pos];
                 }));
@@ -63,22 +63,27 @@ export class Tetris {
         }
     }
 
-    public evaluate(head: Array<Variable>, variables: Array<Variable>, atoms: Array<Atom>): SkipList<Tuple> {
-        const SAO = variables;
+    public execute(atoms: Array<IAtom>): SkipList<Tuple> {
         const all = Box.from(this.wildcard);
-        const result = new SkipList<Tuple>(4, 0.25, false);
+        const result = new SkipList<Tuple>();
 
         let [v, w] = this.probe(all);
         while (!v) {
             const tuple = w.tuple(this.schema);
-            const gapsCnt = this.gaps(atoms, tuple, SAO);
+            const gapsCnt = this.gaps(atoms, tuple);
             if (gapsCnt == 0) {
-                result.insert(Tuple.from(head.map(v => tuple[SAO.indexOf(v)])));
+                result.insert(tuple);
                 this.kb.insert(w);
             }
             [v, w] = this.probe(all);
         }
 
         return result;
+    }
+}
+
+export class TetrisJoin {
+    public execute(atoms: Array<IAtom>, values: ValueSet): SkipList<Tuple> {
+        return new TetrisJoinImpl(values).execute(atoms);
     }
 }

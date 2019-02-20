@@ -26,7 +26,7 @@ export class SkipList<T extends IComparable<T>> {
     private level: number;
     private _size: number;
 
-    constructor(private depth: number, private p: number, private throwsOnDuplicate = false) {
+    constructor(private depth = 4, private p = 1 / depth, private throwsOnDuplicate = false) {
         this.head = new Node<T>(null, depth);
         this.tail = new Node<T>(null, 0);
         this.level = 0;

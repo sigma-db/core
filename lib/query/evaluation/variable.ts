@@ -1,4 +1,4 @@
-import { Attribute, DataType } from "../database";
+import { Attribute, DataType } from "../../database";
 
 export class Variable {
     constructor(private _id: number, private _type: DataType, private _width: number) { }
@@ -34,6 +34,6 @@ export class ValueSet {
     }
 
     public get variables(): Array<Variable> {
-        return Object.values(this.vars);
+        return Object.entries(this.vars).sort(([, v], [, w]) => v.id - w.id).map(([, cqvar]) => cqvar);
     }
 }

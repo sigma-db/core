@@ -180,6 +180,12 @@ export abstract class Relation {
             yield tuple.toObject(this._schema);
         }
     }
+
+    public *[Symbol.iterator](): IterableIterator<Tuple> {
+        for (let tuple of this._tuples) {
+            yield tuple;
+        }
+    }
 }
 
 class RelationTemp extends Relation {

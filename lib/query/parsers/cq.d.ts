@@ -7,21 +7,21 @@ declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select"
 declare enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 declare enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 
-interface IValue<V> {
+interface IValueCQ<V> {
     type: ValueType;
     val: V;
 }
 
-interface INamedValue<V> extends IValue<V> {
+interface INamedValueCQ<V> extends IValueCQ<V> {
     attr: string;
 }
 
-interface ITuple<V extends IValue<Literal | VariableName>> {
+interface ITupleCQ<V extends IValueCQ<Literal | VariableName>> {
     type: TupleType;
     vals: Array<V>;
 }
 
-interface IAtom extends ITuple<IValue<Literal | VariableName>> {
+interface IAtomCQ extends ITupleCQ<IValueCQ<Literal | VariableName>> {
     rel: string;
 }
 
@@ -36,13 +36,13 @@ interface ICreateCQ extends ICQ {
 
 interface IInsertCQ extends ICQ {
     rel: string;
-    tuple: ITuple<IValue<Literal>>;
+    tuple: ITupleCQ<IValueCQ<Literal>>;
 }
 
 interface ISelectCQ extends ICQ {
     name?: string;
-    attrs: Array<IValue<Literal | VariableName>>;
-    body: Array<IAtom>
+    attrs: Array<IValueCQ<Literal | VariableName>>;
+    body: Array<IAtomCQ>
 }
 
 interface IInfoCQ extends ICQ {

@@ -1,17 +1,14 @@
 ﻿import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
-import { Tetris } from "./evaluation/tetris";
+import { IAtom } from "./evaluation/atom";
+import { Projection } from "./evaluation/operators";
+import { TetrisJoin } from "./evaluation/operators/tetris-join";
+import { ValueSet } from "./evaluation/variable";
 import { IQuery } from "./index";
-import { IAtom, ICreateCQ, IInfoCQ, IInsertCQ, INamedValue, ISelectCQ, ITuple, Literal, parse, VariableName } from "./parsers/cq";
-import { ValueSet, Variable } from "./variable";
+import { IAtomCQ, ICreateCQ, IInfoCQ, IInsertCQ, INamedValueCQ, ISelectCQ, ITupleCQ, Literal, parse, VariableName } from "./parsers/cq";
 
 enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
-
-interface Atom {
-    rel: string;
-    vars: Array<Variable>;
-}
 
 class CreateCQ implements IQuery {
     constructor(private query: ICreateCQ) { }
@@ -30,7 +27,7 @@ class InsertCQ implements IQuery {
             const tuple = this.query.tuple;
             raw = tuple.vals.map(v => v.val);
         } else {
-            const { vals } = <ITuple<INamedValue<Literal>>>this.query.tuple;
+            const { vals } = <ITupleCQ<INamedValueCQ<Literal>>>this.query.tuple;
             raw = db.relation(this.query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
         }
         const _tuple = Tuple.from(raw);
@@ -39,14 +36,17 @@ class InsertCQ implements IQuery {
 }
 
 class SelectCQ implements IQuery {
+    private static readonly JOIN = new TetrisJoin();
+    private static readonly PROJECT = new Projection();
+
     constructor(private query: ISelectCQ) { }
 
-    private resolve(atoms: Array<IAtom>, schema: ISchema): [ValueSet, Array<Atom>] {
+    private resolve(cqatoms: Array<IAtomCQ>, schema: ISchema): [ValueSet, Array<IAtom>] {
         const valset = new ValueSet();
-        const cqatoms = atoms.map(atom => {
+        const atoms = cqatoms.map(atom => {
             if (atom.type == TupleType.UNNAMED) {
                 return {
-                    rel: atom.rel,
+                    rel: schema[atom.rel],
                     vars: atom.vals.map((v, i) => {
                         const { type, width } = schema[atom.rel].schema[i];
                         if (v.type == ValueType.VARIABLE) {
@@ -59,9 +59,9 @@ class SelectCQ implements IQuery {
             } else {
                 const { rel, vals } = atom;
                 return {
-                    rel: rel,
+                    rel: schema[atom.rel],
                     vars: schema[rel].schema.map(spec => {
-                        const v = vals.find(v => (<INamedValue<VariableName>>v).attr === spec.name);
+                        const v = vals.find(v => (<INamedValueCQ<VariableName>>v).attr === spec.name);
                         if (!v) {
                             return valset.variable(spec.type, spec.width);
                         } else if (v.type == ValueType.VARIABLE) {
@@ -70,36 +70,36 @@ class SelectCQ implements IQuery {
                             throw new Error("Constants are not yet supported!");
                         }
                     })
-                }
+                };
             }
         });
-        return [valset, cqatoms];
+        return [valset, atoms];
     }
 
     public execute(db: Database): Relation {
         const [valset, atoms] = this.resolve(this.query.body, db.schema);
-        const tetris = new Tetris(db, valset.schema());
-        const head = this.query.attrs.map(attr => valset.get(<string>attr.val));
-        const tuples = tetris.evaluate(head, valset.variables, atoms);
-        const schema = this.query.attrs.map(_attr => {
-            const { attr, val } = <INamedValue<VariableName>>_attr;
-            return Attribute.create(attr, valset.get(val).type, valset.get(val).width);
-        });
-        const result = Relation.from(this.query.name, schema, tuples).freeze();
-        return result;
+        const queryAttrs = <Array<INamedValueCQ<VariableName>>>this.query.attrs;
+        const schema = queryAttrs.map(({ attr, val }) => Attribute.create(attr, valset.get(val).type, valset.get(val).width));
+        const prjSchema = queryAttrs.map(({ val }) => valset.get(val).id);
+
+        const joined = SelectCQ.JOIN.execute(atoms, valset);
+        const projected = SelectCQ.PROJECT.execute(joined, prjSchema);
+        const result = Relation.from(this.query.name, schema, projected);
+        
+        return result.freeze();
     }
 }
 
 class InfoCQ implements IQuery {
     private static readonly DATABASE_SCHEMA = [
         Attribute.create("Relation", DataType.STRING, 32),
-        Attribute.create("Arity", DataType.INT, 4),
-        Attribute.create("Cardinality", DataType.INT, 4)
+        Attribute.create("Arity", DataType.INT),
+        Attribute.create("Cardinality", DataType.INT)
     ];
     private static readonly RELATION_SCHEMA = [
         Attribute.create("Attribute", DataType.STRING, 32),
         Attribute.create("Data Type", DataType.STRING, 8),
-        Attribute.create("Width", DataType.INT, 4)
+        Attribute.create("Width", DataType.INT)
     ];
 
     constructor(private query: IInfoCQ) { }
