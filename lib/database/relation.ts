@@ -121,6 +121,20 @@ export abstract class Relation {
     }
 
     /**
+     * Whether this relation admits insertions to alter its tuple set
+     */
+    public get isStatic(): boolean {
+        return this instanceof RelationStatic;
+    }
+
+    /**
+     * Whether changes to this relation's tuple set are logged on disk
+     */
+    public get isLogged(): boolean {
+        return this instanceof RelationLogged;
+    }
+
+    /**
      * Infer any gaps surrounding the given tuple within the relation
      * @param tuple The tuple to probe
      */

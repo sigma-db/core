@@ -2,7 +2,7 @@
 import { createInterface } from 'readline';
 
 if (process.argv.length < 3) {
-    console.warn(`Working in a temporary database. Any data generated during this session will be lost upon closing the connection.\r\nTo persist data, run: npm run -- </path/to/database>`);
+    console.warn(`Working in a temporary database. Any data generated during this session will be lost upon closing the client.\r\nTo persist data, run: npm run -- </path/to/database>`);
 }
 
 const db = Database.open({ path: process.argv[2] });
@@ -15,17 +15,17 @@ const repl = createInterface({
 repl.prompt();
 repl.on('line', input => {
     try {
-        const result = Query.parse(input).execute(db);;
+        const result = Query.parse(input).execute(db);
         if (!!result) {
             if (!!result.name) {
-                console.log(`${result.name}:`);
+                console.log(`${result.name} (${result.size} tuples):`);
             }
             console.table([...result.tuples()]);
         } else {
             console.log("Done");
         }
     } catch (e) {
-        console.log(e);
+        console.log(e.message);
     }
     repl.prompt();
 });
