@@ -2,7 +2,8 @@
 import { createInterface } from 'readline';
 
 if (process.argv.length < 3) {
-    console.warn(`Working in a temporary database. Any data generated during this session will be lost upon closing the client.\r\nTo persist data, run: npm run -- </path/to/database>`);
+    console.warn("Working in a temporary database. Any data generated during this session will be lost upon closing the client.");
+    console.warn("Run the client with 'npm run -- </path/to/database>' to make changes persistent.")
 }
 
 const db = Database.open({ path: process.argv[2] });
