@@ -44,7 +44,7 @@ export class DyadicTrie<T> {
      * Retrieves all values associated with the given key or any of its prefixes present in the trie
      * @param key The key to search for
      */
-    public search(key: bigint): Array<KV<T>> {
+    public searchAll(key: bigint): Array<KV<T>> {
         let msb = BigInt(Dyadic.msb(key));
         let result: Array<KV<T>> = new Array<KV<T>>();
         let node = this.root;
@@ -57,5 +57,21 @@ export class DyadicTrie<T> {
         } while (!!node && msb >= 0n);
 
         return result;
+    }
+
+    /**
+     * Returns the the first value associated with the given key or any of its prefixes present in the trie
+     * @param key The key to search for
+     */
+    public search(key: bigint): KV<T> {
+        let msb = BigInt(Dyadic.msb(key));
+        let node = this.root;
+
+        do {
+            if (node.value) {
+                return [key >> msb, node.value];
+            }
+            node = node.children[Number(BigInt.asIntN(1, key >> --msb))];
+        } while (!!node && msb >= 0n);
     }
 }

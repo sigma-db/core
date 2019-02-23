@@ -9,7 +9,7 @@
     "node": ">=11.0.0"
   },
   "devDependencies": {
-    "@types/node": "^10.12.21",
+    "@types/node": "^11.9.4",
     "pegjs": "^0.11.0-dev.325",
     "tslint": "^5.12.1",
     "typescript": "^3.3.3"

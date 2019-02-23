@@ -1,4 +1,4 @@
-﻿import { Box, Relation } from '../../database';
+﻿import { Box } from '../../database';
 import { DyadicTrie } from '../../util';
 
 export class CDS {
@@ -13,10 +13,10 @@ export class CDS {
      * @param boxes The boxes to insert
      */
     public insert(...boxes: Box[]) {
-        boxes.forEach(_b => {
+        boxes.forEach(box => {
             let trie = this.data;
-            _b.forEach(s => {
-                trie = trie.putIfAbsent(s, new DyadicTrie<any>());
+            box.forEach(int => {
+                trie = trie.putIfAbsent(int, new DyadicTrie<any>());
             });
         });
     }
@@ -26,17 +26,15 @@ export class CDS {
      * @param box The box to check
      */
     public witnessAll(box: Box): Box[] {
-        const _cover = (dim: number, trie: DyadicTrie<any>): bigint[][] => {
+        const cover = (dim: number, trie: DyadicTrie<any>): bigint[][] => {
             const sub = trie.search(box[dim]);
             if (dim == box.length - 1) {
-                return sub.map(([_int,]) => [_int]);
-            }
-            else {
-                return [].concat(...sub.map(([_int, _trie]) => _cover(dim + 1, _trie).map(b => [_int, ...b])));
+                return sub.map(([int,]) => [int]);
+            } else {
+                return [].concat(...sub.map(([int, _trie]) => cover(dim + 1, _trie).map(b => [int, ...b])));
             }
         };
-
-        return _cover(0, this.data).map(b => Box.from(b));
+        return cover(0, this.data).map(b => Box.from(b));
     }
 
     /**
@@ -44,6 +42,26 @@ export class CDS {
      * @param box The box to check
      */
     public witness(box: Box): Box {
-        return this.witnessAll(box).shift();
+        const cover = (dim: number, trie: DyadicTrie<any>): bigint[] => {
+            if (dim == box.length - 1) {
+                const b = trie.search(box[dim]);
+                if (!!b) {
+                    const [int,] = b;
+                    return [int];
+                }
+            } else {
+                for (let [int, _trie] of trie.searchAll(box[dim])) {
+                    const b = cover(dim + 1, _trie);
+                    if (!!b) {
+                        return [int, ...b];
+                    }
+                }
+            }
+        };
+
+        const b = cover(0, this.data);
+        if (!!b) {
+            return Box.from(b);
+        }
     }
 }

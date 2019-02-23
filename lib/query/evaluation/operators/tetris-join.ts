@@ -13,7 +13,7 @@ class TetrisJoinImpl {
     constructor(values: ValueSet) {
         this.kb = new CDS();
         this.schema = values.schema();
-        this.variables = values.variables;
+        this.variables = values.variables();
         this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
