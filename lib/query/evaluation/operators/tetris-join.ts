@@ -1,4 +1,4 @@
-import { Attribute, Box, Tuple, Relation } from "../../../database";
+import { Attribute, Box, Tuple } from "../../../database";
 import { SkipList } from "../../../util";
 import { IAtom } from "../atom";
 import { CDS } from "../cds";
@@ -19,8 +19,7 @@ class TetrisJoinImpl {
 
     private gaps(atoms: Array<IAtom>, tuple: Tuple): number {
         let gapsCnt = 0;
-        atoms.forEach(atom => {
-            const { rel, vars } = atom;
+        for (let { rel, vars } of atoms) {
             const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
             rel.gaps(Tuple.from(_tuple)).forEach(box => {
                 const _box = Box.from(this.variables.map((v, i) => {
@@ -30,7 +29,7 @@ class TetrisJoinImpl {
                 this.kb.insert(_box);
                 gapsCnt++;
             });
-        });
+        }
         return gapsCnt;
     }
 
