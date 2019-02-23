@@ -44,19 +44,16 @@ export class DyadicTrie<T> {
      * Retrieves all values associated with the given key or any of its prefixes present in the trie
      * @param key The key to search for
      */
-    public searchAll(key: bigint): Array<KV<T>> {
+    public *searchAll(key: bigint): IterableIterator<KV<T>> {
         let msb = BigInt(Dyadic.msb(key));
-        let result: Array<KV<T>> = new Array<KV<T>>();
         let node = this.root;
 
         do {
             if (node.value) {
-                result.push([key >> msb, node.value]);
+                yield [key >> msb, node.value];
             }
             node = node.children[Number(BigInt.asIntN(1, key >> --msb))];
         } while (!!node && msb >= 0n);
-
-        return result;
     }
 
     /**

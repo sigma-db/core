@@ -9,32 +9,14 @@ export class CDS {
     }
 
     /**
-     * Inserts new boxes into the CDS
-     * @param boxes The boxes to insert
+     * Inserts a new box into the CDS
+     * @param boxes The box to insert
      */
-    public insert(...boxes: Box[]) {
-        boxes.forEach(box => {
-            let trie = this.data;
-            box.forEach(int => {
-                trie = trie.putIfAbsent(int, new DyadicTrie<any>());
-            });
-        });
-    }
-
-    /**
-     * Retrieves all boxes in the CDS containing the given box
-     * @param box The box to check
-     */
-    public witnessAll(box: Box): Box[] {
-        const cover = (dim: number, trie: DyadicTrie<any>): bigint[][] => {
-            const sub = trie.search(box[dim]);
-            if (dim == box.length - 1) {
-                return sub.map(([int,]) => [int]);
-            } else {
-                return [].concat(...sub.map(([int, _trie]) => cover(dim + 1, _trie).map(b => [int, ...b])));
-            }
-        };
-        return cover(0, this.data).map(b => Box.from(b));
+    public insert(box: Box): void {
+        let trie = this.data;
+        for (let i = 0; i < box.length; i++) {
+            trie = trie.putIfAbsent(box[i], new DyadicTrie<any>());
+        }
     }
 
     /**
