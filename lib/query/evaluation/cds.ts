@@ -19,6 +19,9 @@ export class CDS {
         }
     }
 
+    /**
+     * Actual implementation of {@link witness}
+     */
     private cover(box: ArrayLike<bigint>, dim: number, trie: DyadicTrie<any>): Array<bigint> {
         if (dim == box.length - 1) {
             const b = trie.search(box[dim]);

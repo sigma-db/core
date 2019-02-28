@@ -69,27 +69,10 @@ export abstract class Relation {
     }
 
     /**
-     * Inserts a new tuple into the relation
-     * @param tuple The tuple to insert
+     * The name of the relation
      */
-    public insert(tuple: Tuple) {
-        try {
-            this._tuples.insert(tuple);
-        } catch (e) {
-            if (e instanceof DuplicateKeyError) {
-                throw new Error(`Relation "${this._name}" already contains a tuple ${e.key.toString(this._schema)}.`);
-            } else {
-                throw e;
-            }
-        }
-    }
-
-    /**
-     * Returns a new relation sharing the state of this relation, 
-     * but not allowing further modifications of its tuple set.
-     */
-    public freeze(): Relation {
-        return new RelationStatic(this._name, this._schema, this._tuples);
+    public get name(): string {
+        return this._name;
     }
 
     /**
@@ -104,13 +87,6 @@ export abstract class Relation {
      */
     public get arity(): number {
         return this._schema.length;
-    }
-
-    /**
-     * The name of the relation
-     */
-    public get name(): string {
-        return this._name;
     }
 
     /**
@@ -132,6 +108,30 @@ export abstract class Relation {
      */
     public get isLogged(): boolean {
         return this instanceof RelationLogged;
+    }
+
+    /**
+     * Inserts a new tuple into the relation
+     * @param tuple The tuple to insert
+     */
+    public insert(tuple: Tuple) {
+        try {
+            this._tuples.insert(tuple);
+        } catch (e) {
+            if (e instanceof DuplicateKeyError) {
+                throw new Error(`Relation "${this._name}" already contains a tuple ${e.key.toString(this._schema)}.`);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    /**
+     * Returns a new relation sharing the state of this relation, 
+     * but not allowing further modifications of its tuple set.
+     */
+    public freeze(): Relation {
+        return new RelationStatic(this._name, this._schema, this._tuples);
     }
 
     /**
@@ -196,9 +196,7 @@ export abstract class Relation {
     }
 
     public *[Symbol.iterator](): IterableIterator<Tuple> {
-        for (let tuple of this._tuples) {
-            yield tuple;
-        }
+        yield* this._tuples;
     }
 }
 

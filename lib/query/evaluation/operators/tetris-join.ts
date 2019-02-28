@@ -21,14 +21,14 @@ class TetrisJoinImpl {
         let gapsCnt = 0;
         for (let { rel, vars } of atoms) {
             const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
-            rel.gaps(Tuple.from(_tuple)).forEach(box => {
+            for (let box of rel.gaps(Tuple.from(_tuple))) {
                 const _box = Box.from(this.variables.map((v, i) => {
                     const pos = vars.indexOf(v);
                     return pos < 0 ? this.wildcard[i] : box[pos];
                 }));
                 this.kb.insert(_box);
                 gapsCnt++;
-            });
+            }
         }
         return gapsCnt;
     }
