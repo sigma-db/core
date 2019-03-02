@@ -8,7 +8,7 @@ abstract class Client {
     constructor(protected db: Database) {
         if (!db.isLogged) {
             console.warn("Working in a temporary database. Any data generated during this session will be lost upon closing the client.");
-            console.warn("Run the client with 'sigmaDB </path/to/database>' to make changes persistent.");
+            console.warn("Run the client with 'sigma cli </path/to/database>' to make changes persistent.");
         }
     }
 
