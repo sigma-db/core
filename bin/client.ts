@@ -117,5 +117,6 @@ yargs
             client.start();
         })
     .demandCommand(1, 1, 'You need to specify how to connect to the database')
+    .scriptName("sigma")
     .help()
     .argv;
