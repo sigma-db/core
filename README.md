@@ -14,10 +14,11 @@ Still, please keep in mind that this is a *research project* and as such lacks m
 
 ### Build
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
-* To build the library and the accompanying client application, run `npm run build`.
+* To build the library and the accompanying client application, run `npm install -g`.
 
 ### Run
-* Start the command line interface using `npm run db -- </path/to/database>`. To work in a temporary database, simply run `npm run db` instead.
+* Start the command line interface using `sigma cli </path/to/database>`. To work in a temporary database, simply run `sigma cli` instead.
+* Alternatively, you can expose the database on the network by running `sigma serve </path/to/database> --port=4711`.
 
 ## Usage
 The database engine can be accessed in two ways, either by the provided command line interface, or by directly using its exposed API.

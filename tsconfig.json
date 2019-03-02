@@ -3,7 +3,6 @@
     "allowJs": true,
     "module": "commonjs",
     "outDir": "dist",
-    "removeComments": true,
     "target": "esnext",
     "sourceMap": true
   },

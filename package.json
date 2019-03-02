@@ -1,6 +1,6 @@
 {
   "name": "sigma-db",
-  "version": "0.6.1",
+  "version": "0.6.5",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "author": {
     "name": "David Luis Wiegandt",
@@ -19,13 +19,14 @@
     "typescript": "^3.3.3"
   },
   "scripts": {
-    "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
-    "db": "node dist/bin/client.js"
+    "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc"
   },
   "dependencies": {
     "express": "^4.16.4",
     "yargs": "^13.2.1"
   },
-  "bin": "dist/bin/client.js",
-  "main": "dist/lib/index.js"
+  "bin": {
+    "sigma": "./dist/bin/client.js"
+  },
+  "main": "./dist/lib/index.js"
 }
