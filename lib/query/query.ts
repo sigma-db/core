@@ -1,6 +1,6 @@
 ﻿import { CQQuery } from "./cq-query";
-import { SQLQuery } from "./sql-query";
 import { IQuery } from "./index";
+import { SQLQuery } from "./sql-query";
 
 export enum QueryLang { CQ, SQL };
 

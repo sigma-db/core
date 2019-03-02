@@ -12,7 +12,21 @@ interface IOptions {
     log: TransactionLog;
 }
 
-export abstract class Relation {
+class DuplicateTupleError extends Error {
+    constructor(private _rel: string, private _tuple: Tuple, private _schema: Array<Attribute>) {
+        super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
+    }
+
+    public get relation(): string {
+        return this._rel;
+    }
+
+    public get tuple(): string {
+        return this._tuple.toString(this._schema);
+    }
+}
+
+export abstract class Relation implements Iterable<Tuple> {
     protected _name: string;
     protected _schema: TSchema;
     protected _tuples: SkipList<Tuple>;
@@ -119,7 +133,7 @@ export abstract class Relation {
             this._tuples.insert(tuple);
         } catch (e) {
             if (e instanceof DuplicateKeyError) {
-                throw new Error(`Relation "${this._name}" already contains a tuple ${e.key.toString(this._schema)}.`);
+                throw new DuplicateTupleError(this.name, e.key, this._schema);
             } else {
                 throw e;
             }
@@ -132,6 +146,13 @@ export abstract class Relation {
      */
     public freeze(): Relation {
         return new RelationStatic(this._name, this._schema, this._tuples);
+    }
+
+    private _gaps(tuple: Tuple, dim: number, start: bigint, end: bigint): Array<Box> {
+        const [, max, exp, wildcard] = this._boundaries;
+        let front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
+        let back = wildcard.slice(dim + 1);
+        return Dyadic.get(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
     }
 
     /**
@@ -151,7 +172,7 @@ export abstract class Relation {
             for (let j = 0; j < this.arity; j++) {
                 let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
         } else if (succ.compareTo(tuple) == 0) {
             // probe tuple is in relation --> return empty box set
@@ -160,7 +181,7 @@ export abstract class Relation {
             for (let j = 0; j < this.arity; j++) {
                 let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
         } else {
             // probe tuple is between pred and succ
@@ -169,18 +190,18 @@ export abstract class Relation {
             for (let j = s + 1; j < this.arity; j++) {
                 let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
             for (let j = s + 1; j < this.arity; j++) {
                 let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 let back = wildcard.slice(j + 1);
-                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
             let front = pred.slice(0, s).map((z, i) => z ^ max[i]);
             let back = wildcard.slice(s + 1);
-            Dyadic.get(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.from([...front, i, ...back])));
+            Dyadic.get(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
         }
 
         return gaps;

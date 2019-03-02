@@ -7,14 +7,22 @@ export class Box implements ArrayLike<bigint> {
     public readonly length: number;
 
     /**
-     * Turn the given array of intervals into a box
+     * Creates a box from the given array of intervals
      * @param values The intervals the box will be made of
      */
     public static from(values: Array<bigint>): Box {
         return Object.setPrototypeOf(values, Box.prototype);
     }
 
-    /** 
+    /**
+     * Creates a box from the given sequence of intervals
+     * @param values The intervals the box will be made of
+     */
+    public static of(...values: Array<bigint>): Box {
+        return Object.setPrototypeOf(values, Box.prototype);
+    }
+
+    /**
      *  Checks whether this box is a tuple
      */
     public isTuple(schema: Array<Attribute>): boolean {
@@ -47,9 +55,9 @@ export class Box implements ArrayLike<bigint> {
      */
     public split(schema: Array<Attribute>): [Box, Box] {
         let thick = this.findIndex((int, idx) => (int & schema[idx].max) == 0n);
-        let b1 = [...this.slice(0, thick), this[thick] << 1n, ...this.slice(thick + 1)];
-        let b2 = [...this.slice(0, thick), (this[thick] << 1n) + 1n, ...this.slice(thick + 1)];
-        return [Box.from(b1), Box.from(b2)];
+        let b1 = Box.of(...this.slice(0, thick), this[thick] << 1n, ...this.slice(thick + 1));
+        let b2 = Box.of(...this.slice(0, thick), (this[thick] << 1n) + 1n, ...this.slice(thick + 1));
+        return [b1, b2];
     }
 
     /**
@@ -65,10 +73,6 @@ export class Box implements ArrayLike<bigint> {
         });
         r[p] >>= 1n;
         return Box.from(r);
-    }
-
-    public forEach(callbackfn: (value: bigint, index: number, array: any[]) => void): void {
-        Array.prototype.forEach.call(this, callbackfn);
     }
 
     private every(callbackfn: (value: bigint, index: number, array: any[]) => boolean): boolean {

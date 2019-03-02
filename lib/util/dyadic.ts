@@ -4,12 +4,12 @@ export class Dyadic {
      * @param num The number to get the index of the most significant bit from
      */
     public static msb(num: bigint): number {
-        let _msb = 0;
+        let msb = 0;
         while (num > 0) {
-            _msb++;
+            msb++;
             num >>= 1n;
         }
-        return _msb - 1;
+        return msb - 1;
     }
 
     /**
@@ -32,8 +32,7 @@ export class Dyadic {
 
         if ((start & mask) == 0n && (end & mask) == mask) {
             yield (start >> BigInt(root)) ^ (1n << BigInt(exp - root));
-        }
-        else {
+        } else {
             yield* Dyadic.dyadic(start, start | (mask >> 1n), exp);
             yield* Dyadic.dyadic(end & ~(mask >> 1n), end, exp);
         }

@@ -1,7 +1,7 @@
 import { IComparable } from "../util";
 import { Attribute } from "./attribute";
 
-export class Tuple implements ArrayLike<bigint>, IComparable<Tuple> {
+export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<Tuple> {
     readonly [n: number]: bigint;
     public readonly length: number;
 
@@ -10,6 +10,14 @@ export class Tuple implements ArrayLike<bigint>, IComparable<Tuple> {
      * @param tuple The array of avlues to create the tuple from
      */
     public static from(tuple: Array<bigint>): Tuple {
+        return Object.setPrototypeOf(tuple, Tuple.prototype);
+    }
+
+    /**
+     * Turns the given sequence into a tuple and returns it
+     * @param tuple The array of avlues to create the tuple from
+     */
+    public static of(...tuple: Array<bigint>): Tuple {
         return Object.setPrototypeOf(tuple, Tuple.prototype);
     }
 
@@ -61,5 +69,11 @@ export class Tuple implements ArrayLike<bigint>, IComparable<Tuple> {
      */
     public toObject(schema: Array<Attribute>): { [attr: string]: string | number | boolean } {
         return Object.assign({}, ...schema.map((attr, idx) => ({ [attr.name]: attr.valueOf(this[idx]) })));
+    }
+
+    public *[Symbol.iterator](): IterableIterator<bigint> {
+        for (let i = 0; i < this.length; i++) {
+            yield this[i];
+        }
     }
 }

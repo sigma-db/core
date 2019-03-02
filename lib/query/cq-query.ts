@@ -2,7 +2,7 @@
 import { createInterface } from 'readline';
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
 import { IAtom } from "./evaluation/atom";
-import { Projection, TetrisJoin } from "./evaluation/operators";
+import { Projection, TetrisJoin, SelingerJoin } from "./evaluation/operators";
 import { ValueSet } from "./evaluation/variable";
 import { IQuery } from "./index";
 import { IAtomCQ, ICreateCQ, IInfoCQ, IInsertCQ, ILoadCQ, INamedValueCQ, ISelectCQ, ITupleCQ, Literal, parse, VariableName } from "./parsers/cq";
@@ -37,7 +37,7 @@ class InsertCQ implements IQuery {
 }
 
 class SelectCQ implements IQuery {
-    private static readonly JOIN = new TetrisJoin();
+    private static readonly JOIN = new SelingerJoin();
     private static readonly PROJECT = new Projection();
 
     constructor(private query: ISelectCQ) { }

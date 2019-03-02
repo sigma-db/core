@@ -12,13 +12,18 @@ export interface ISchema {
 }
 
 export abstract class Database {
+    private static readonly defaultOptions: Partial<IOptions> = {
+        path: undefined,
+    };
+
     protected readonly relations: { [name: string]: Relation } = {};
 
     /**
      * Opens an existing database stored at the specified location 
      * or creates a new one if it does not yet exist.
      */
-    public static open({ path }: IOptions): Database {
+    public static open(options = Database.defaultOptions): Database {
+        const { path } = options;
         let db: Database;
         if (!!path) {
             const log = TransactionLog.open(path);
@@ -62,6 +67,13 @@ export abstract class Database {
             S[R] = this.relations[R];
             return S;
         }, {});
+    }
+
+    /**
+     * Whether modification to this instance are logged or not
+     */
+    public get isLogged(): boolean {
+        return this instanceof DatabaseLogged;
     }
 
     /**
