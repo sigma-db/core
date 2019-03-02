@@ -1,5 +1,4 @@
 ﻿#!/usr/bin/env node
-
 import * as express from 'express';
 import * as readline from 'readline';
 import * as yargs from 'yargs';
