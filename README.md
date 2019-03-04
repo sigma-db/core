@@ -1,7 +1,5 @@
 ﻿# ![logo][]
 
-[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
-
 [logo]: assets/sigmaDB.png
 
 *sigmaJS* is a relational database engine that aims to incorporate some of the latest findings in database theory.
@@ -10,6 +8,8 @@ One such approach is the *Tetris* join algorithm introduced in [Joins via Geomet
 
 We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
+
+[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
 
 ## Prerequisites
 * In order to run sigmaJS you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
