@@ -96,6 +96,7 @@ class CLI extends Client {
 }
 
 yargs
+    .scriptName("sigma")
     .command(
         'serve',
         'expose the database instance via http',
@@ -117,6 +118,5 @@ yargs
             client.start();
         })
     .demandCommand(1, 1, 'You need to specify how to connect to the database')
-    .scriptName("sigma")
     .help()
     .argv;

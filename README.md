@@ -1,4 +1,8 @@
-﻿[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
+﻿# ![logo][]
+
+[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
+
+[logo]: assets/sigmaDB.png
 
 *sigmaJS* is a relational database engine that aims to incorporate some of the latest findings in database theory.
 While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.
@@ -7,30 +11,24 @@ One such approach is the *Tetris* join algorithm introduced in [Joins via Geomet
 We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
 
-## Install
+## Prerequisites
+* In order to run sigmaJS you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
+
+## Installation and Use
 To install the package from [npm](https://www.npmjs.com/), simply run `npm i -g sigma-db`.
-Thereafter, you can run the application with `sigma cli </path/to/database>`.
+Thereafter, you can run sigmaJS in one of two ways:
+* In *CLI* mode, you can directly modify the database from the command line. To execute sigmaJS in *CLI* mode, run `sigma-db cli </path/to/database>`.
+* In *server* mode, the database's data is exposed via a TCP port to be remotely accessed. Run `sigma-db serve </path/to/database> --port=4711` to execute sigmaJS in *server* mode.
 
-## Setup
-
-### Prerequisites
-* If not already present, download and install [Node.js](https://nodejs.org) 11.0 or newer. Depending on your operating system, the native package manager might be preferrable for the retrieval and installation.
+## Custom Build
+If instead you want to clone the repository and build sigmaJS from source by yourself, follow these steps:
 * Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
-
-### Build
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
 * To build the library and the accompanying client application, run `npm install -g`.
 
-### Run
-* Start the command line interface using `sigma cli </path/to/database>`. To work in a temporary database, simply run `sigma cli` instead.
-* Alternatively, you can expose the database on the network by running `sigma serve </path/to/database> --port=4711`.
+You can now use sigmaJS as described in [Installation and Use](#installation-and-use)
 
-## Usage
-The database engine can be accessed in two ways, either by the provided command line interface, or by directly using its exposed API.
-
-### Command Line Interface
-Our database engine supports an extension of [conjunctive queries](https://en.wikipedia.org/wiki/Conjunctive_query#Datalog) that is more concise when formulating queries against complex schemata in realistic scenarios.
-
+## Query Language
 We discern three types of queries, whose syntax we outline by example:
 
 1. To **create** a new relation *Employee* with attributes *id*, *name*, *salary* and *boss* of types `int`, `string`, `int` and `int`, respectively, write `Employee: (id: int, name: string, salary: int, boss: int)`. Supported data types are `int`, `string`, `char` and `bool`.
@@ -38,36 +36,37 @@ We discern three types of queries, whose syntax we outline by example:
 3. To **select** all employees' IDs whose salary is 4,200, write either `(name=x) <- Employee(name=x, salary=4200)` or `(name=y) <- Employee(x, y, 4200, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
 
-### Library
+## Usage as a Library
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
 ```TypeScript
-import { Attribute, Database, Query, Relation, Tuple } from "sigma";
+import { Database, Engine, EngineType, Query } from "sigma";
 
-const db = Database.open(); // using a temporary database
+const engine = Engine.create(); // using the default geometric engine
+const db = Database.open();     // using a temporary database
 
-db.createRelation("Employee", [
-    Attribute.create("id", DataType.INT),
-    Attribute.create("name", DataType.STRING, 32),
-    Attribute.create("salary", DataType.INT),
-    Attribute.create("division", DataType.INT),
-]);
-db.createRelation("Division", [
-    Attribute.create("id", DataType.INT),
-    Attribute.create("name", DataType.STRING, 64),
-    Attribute.create("head", DataType.INT),
-]);
+const program = [
+    // create tables
+    'Employee: (id: int, name: string(32), salary: int, division: int)',
+    'Division: (id: int, name: string(64), head: int)',
+    // insert into tables
+    'Division(0, "Research and Development", 1)',
+    'Division(1, "Marketing", 0)',
+    'Employee(0, "Jack Walls", 8360, 1)',
+    'Employee(1, "Nicole Smith", 7120, 0)',
+    'Employee(2, "Joan Waters", 2700, 0)',
+    'Employee(3, "David Brown", 4200, 1)',
+    'Employee(4, "Marc Wilson", 4200, 1)',
+    // ask a query
+    '(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)'
+];
 
-db.relation("Division").insert(Tuple.create(0, "Research and Development", 1));
-db.relation("Division").insert(Tuple.create(1, "Marketing", 0));
-db.relation("Employee").insert(Tuple.create(0, "Jack Walls", 8360, 1));
-db.relation("Employee").insert(Tuple.create(1, "Nicole Smith", 7120, 0));
-db.relation("Employee").insert(Tuple.create(2, "Joan Waters", 2700, 0));
-db.relation("Employee").insert(Tuple.create(3, "David Brown", 4200, 1));
-db.relation("Employee").insert(Tuple.create(4, "Marc Wilson", 4200, 1));
-
-const result = Query.parse('(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)').execute(db);
-console.table([...result.tuples()])
+for (let query of program) {
+    const result = engine.parse(query).execute(db);
+    if (!!result) {
+        console.table([...result.tuples()]);
+    }
+}
 
 db.close();
 ```
