@@ -23,7 +23,7 @@ export class Box implements ArrayLike<bigint> {
     }
 
     /**
-     *  Checks whether this box is a tuple
+     * Checks whether this box is a tuple
      */
     public isTuple(schema: Array<Attribute>): boolean {
         return this.every((v, i) => (v & schema[i].max) == schema[i].max);
