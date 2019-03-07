@@ -1,6 +1,6 @@
 ﻿![logo][]
 
-[logo]: https://user-images.githubusercontent.com/10544315/53828393-d0ea7900-3f7d-11e9-98db-fb4972495cf7.png
+[logo]: https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png
 
 *sigmaJS* is a relational database engine that aims to incorporate some of the latest findings in database theory.
 While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.

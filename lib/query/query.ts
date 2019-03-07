@@ -26,19 +26,7 @@ export class Engine {
 
     }
 
-    public static create(engine = EngineType.ALGEBRAIC, lang = QueryLang.CQ): Engine {
+    public static create(engine = EngineType.ALGEBRAIC): Engine {
         return null;
-    }
-
-    /**
-     * Turns the string representation of a query into an internal object representation
-     * @param query The query to parse
-     * @param lang The language of the query. Defaults to CQ.
-     */
-    public parse(query: string, lang: QueryLang = QueryLang.CQ): IQuery {
-        switch (lang) {
-            case QueryLang.CQ: return CQQuery.parse(query);
-            case QueryLang.SQL: return SQLQuery.parse(query);
-        }
     }
 }

@@ -23,8 +23,7 @@ class Server extends Client {
         this.app = express();
         this.app.get('/query/:query', (req, res) => {
             const result = this.onQuery(req.params.query);
-            res.write(JSON.stringify(result));
-            res.end();
+            res.json(result);
         });
     }
 
@@ -33,25 +32,21 @@ class Server extends Client {
     }
 
     private onQuery(query: string): object {
-        let result = {};
-
         try {
-            const qresult = Query.parse(query).execute(this.db);
-            if (!!qresult) {
-                result = {
+            const result = Query.parse(query).execute(this.db);
+            if (!!result) {
+                return {
                     success: true,
-                    name: qresult.name,
-                    size: qresult.size,
-                    tuples: [...qresult.tuples()]
+                    name: result.name,
+                    size: result.size,
+                    tuples: [...result.tuples()]
                 }
             } else {
-                result = { success: true }
+                return { success: true }
             }
         } catch (e) {
-            result = { success: false, error: e.message };
+            return { success: false, error: e.message };
         }
-
-        return result;
     }
 }
 
@@ -99,24 +94,25 @@ yargs
     .scriptName("sigma")
     .command(
         'serve',
-        'expose the database instance via http',
-        yargs => yargs.positional('port', { alias: 'p', default: 4711, type: 'number' }),
-        argv => {
-            const { path, port } = { path: argv._[1], port: argv.port };
-            const db = Database.open({ path: path });
-            const client = new Server(db, port);
-            client.start();
+        'Makes the database instance accessible via a TCP port',
+        yargs => yargs
+            .positional('port', { alias: 'p', default: 54711, type: 'number' })
+            .positional('temp', { alias: 't', default: true, type: 'boolean' })
+            .positional('engine', { alias: 'e', default: 'geometric', type: 'string' }),
+        ({ port, temp, _ }) => {
+            const db = temp ? Database.temp() : Database.open(_[1]);
+            new Server(db, port).start();
         })
     .command(
         'cli',
-        'connect to the database instance via CLI',
-        yargs => yargs.positional('engine', { alias: 'e', default: 'geometric', type: 'string' }),
-        argv => {
-            const { path } = { path: argv._[1] };
-            const db = Database.open({ path: path });
-            const client = new CLI(db);
-            client.start();
+        'Provides a CLI for instant interaction with the database instance',
+        yargs => yargs
+            .positional('temp', { alias: 't', default: true, type: 'boolean' })
+            .positional('engine', { alias: 'e', default: 'geometric', type: 'string' }),
+        ({ temp, _ }) => {
+            const db = temp ? Database.temp() : Database.open(_[1]);
+            new CLI(db).start();
         })
-    .demandCommand(1, 1, 'You need to specify how to connect to the database')
+    .demandCommand(1, 1, 'Specify how to connect to the database')
     .help()
     .argv;

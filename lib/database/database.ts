@@ -3,35 +3,27 @@ import { Relation } from './relation';
 import { ObjectSchema, Type } from './serialisation';
 import { TransactionLog } from './transaction';
 
-interface IOptions {
-    path?: string;
-}
-
 export interface ISchema {
     [name: string]: Relation;
 }
 
 export abstract class Database {
-    private static readonly defaultOptions: Partial<IOptions> = {
-        path: undefined,
-    };
-
     protected readonly relations: { [name: string]: Relation } = {};
 
     /**
      * Opens an existing database stored at the specified location 
      * or creates a new one if it does not yet exist.
      */
-    public static open(options = Database.defaultOptions): Database {
-        const { path } = options;
-        let db: Database;
-        if (!!path) {
-            const log = TransactionLog.open(path);
-            db = new DatabaseLogged(log);
-        } else {
-            db = new DatabaseTemp();
-        }
-        return db;
+    public static open(path: string): Database {
+        const log = TransactionLog.open(path);
+        return new DatabaseLogged(log);
+    }
+
+    /**
+     * Creates a temporary database with no logging to disk.
+     */
+    public static temp(): Database {
+        return new DatabaseTemp();
     }
 
     /**
