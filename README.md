@@ -1,6 +1,4 @@
-﻿![logo][]
-
-[logo]: https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png
+﻿![logo](https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png)
 
 *sigmaJS* is a relational database engine that aims to incorporate some of the latest findings in database theory.
 While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.
@@ -9,12 +7,12 @@ One such approach is the *Tetris* join algorithm introduced in [Joins via Geomet
 We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
 
-[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
-
 ## Prerequisites
-* In order to run sigmaJS you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
+* In order to run sigmaJS, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
 
 ## Installation and Use
+[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
+
 To install the package from [npm](https://www.npmjs.com/), simply run `npm i -g sigma-db`.
 Thereafter, you can run sigmaJS in one of two ways:
 * In *CLI* mode, you can directly modify the database from the command line. To execute sigmaJS in *CLI* mode, run `sigma-db cli </path/to/database>`.
@@ -40,11 +38,9 @@ We discern three types of queries, whose syntax we outline by example:
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
 ```TypeScript
-import { Database, Engine, EngineType, Query } from "sigma";
+import { Database, Query } from "sigma";
 
-const engine = Engine.create(); // using the default geometric engine
 const db = Database.open();     // using a temporary database
-
 const program = [
     // create tables
     'Employee: (id: int, name: string(32), salary: int, division: int)',
@@ -59,14 +55,15 @@ const program = [
     'Employee(4, "Marc Wilson", 4200, 1)',
     // ask a query
     '(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)'
-];
+].map(q => Query.parse(q)); // compile queries
 
-for (let query of program) {
-    const result = engine.parse(query).execute(db);
+// execute program on db
+program.forEach(query => {
+    const result = query.execute(db);
     if (!!result) {
         console.table([...result.tuples()]);
     }
-}
+});
 
 db.close();
 ```
