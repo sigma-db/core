@@ -42,18 +42,10 @@ export class SkipList<T extends IComparable<T>> {
         return this._size;
     }
 
-    private randomLevel(): number {
-        let l = 0;
-        while (Math.random() < this.p && l < this.depth) {
-            l++;
-        }
-        return l;
-    }
-
     public find(key: T): [T, T] {
         let node = this.head;
         for (let i = this.level; i >= 0; i--) {
-            while (node.next[i] != this.tail && node.next[i].key.compareTo(key) < 0) {
+            while (node.next[i] !== this.tail && node.next[i].key.compareTo(key) < 0) {
                 node = node.next[i];
             }
         }
@@ -61,10 +53,10 @@ export class SkipList<T extends IComparable<T>> {
     }
 
     public insert(key: T): void {
-        let pred = new Array<Node<T>>(this.depth + 1);
+        const pred = new Array<Node<T>>(this.depth + 1);
         let node = this.head;
         for (let i = this.level; i >= 0; i--) {
-            while (node.next[i] != this.tail && node.next[i].key.compareTo(key) < 0) {
+            while (node.next[i] !== this.tail && node.next[i].key.compareTo(key) < 0) {
                 node = node.next[i];
             }
             pred[i] = node;
@@ -72,8 +64,8 @@ export class SkipList<T extends IComparable<T>> {
 
         node = node.next[0];
 
-        if (node == this.tail || node.key.compareTo(key) > 0) {
-            let rlevel = this.randomLevel();
+        if (node === this.tail || node.key.compareTo(key) > 0) {
+            const rlevel = this.randomLevel();
 
             if (rlevel > this.level) {
                 for (let i = this.level + 1; i < rlevel + 1; i++) {
@@ -82,7 +74,7 @@ export class SkipList<T extends IComparable<T>> {
                 this.level = rlevel;
             }
 
-            let newNode = new Node<T>(key, rlevel);
+            const newNode = new Node<T>(key, rlevel);
             for (let i = 0; i <= rlevel; i++) {
                 newNode.next[i] = pred[i].next[i];
                 pred[i].next[i] = newNode;
@@ -94,11 +86,19 @@ export class SkipList<T extends IComparable<T>> {
         }
     }
 
-    *[Symbol.iterator](): IterableIterator<T> {
+    public *[Symbol.iterator](): IterableIterator<T> {
         let node = this.head.next[0];
-        while (node != this.tail) {
+        while (node !== this.tail) {
             yield node.key;
             node = node.next[0];
         }
+    }
+
+    private randomLevel(): number {
+        let l = 0;
+        while (Math.random() < this.p && l < this.depth) {
+            l++;
+        }
+        return l;
     }
 }

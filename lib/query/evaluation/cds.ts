@@ -1,5 +1,5 @@
-﻿import { Box } from '../../database';
-import { DyadicTrie } from '../../util';
+﻿import { Box } from "../../database";
+import { DyadicTrie } from "../../util";
 
 export class CDS {
     private data: DyadicTrie<any>;
@@ -20,27 +20,6 @@ export class CDS {
     }
 
     /**
-     * Actual implementation of {@link witness}
-     */
-    private cover(box: ArrayLike<bigint>, dim: number, trie: DyadicTrie<any>): Array<bigint> {
-        if (dim == box.length - 1) {
-            const b = trie.search(box[dim]);
-            if (!!b) {
-                const [int,] = b;
-                return [int];
-            }
-        } else {
-            for (let [int, _trie] of trie.searchAll(box[dim])) {
-                const b = this.cover(box, dim + 1, _trie);
-                if (!!b) {
-                    b.unshift(int);
-                    return b;
-                }
-            }
-        }
-    }
-
-    /**
      * Checks whether a given box is contained in any box in the CDS and returns a witness if so
      * @param box The box to check
      */
@@ -48,6 +27,27 @@ export class CDS {
         const b = this.cover(box, 0, this.data);
         if (!!b) {
             return Box.from(b);
+        }
+    }
+
+    /**
+     * Actual implementation of {@link witness}
+     */
+    private cover(box: ArrayLike<bigint>, dim: number, trie: DyadicTrie<any>): Array<bigint> {
+        if (dim === box.length - 1) {
+            const b = trie.search(box[dim]);
+            if (!!b) {
+                const [int] = b;
+                return [int];
+            }
+        } else {
+            for (const [int, _trie] of trie.searchAll(box[dim])) {
+                const b = this.cover(box, dim + 1, _trie);
+                if (!!b) {
+                    b.unshift(int);
+                    return b;
+                }
+            }
         }
     }
 }

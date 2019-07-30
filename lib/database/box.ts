@@ -4,7 +4,6 @@ import { Tuple } from "./tuple";
 
 export class Box implements ArrayLike<bigint> {
     [n: number]: bigint;
-    public readonly length: number;
 
     /**
      * Creates a box from the given array of intervals
@@ -22,17 +21,19 @@ export class Box implements ArrayLike<bigint> {
         return Object.setPrototypeOf(values, Box.prototype);
     }
 
+    public readonly length: number;
+
     /**
      * Checks whether this box is a tuple
      */
-    public isTuple(schema: Array<Attribute>): boolean {
-        return this.every((v, i) => (v & schema[i].max) == schema[i].max);
+    public isTuple(schema: Attribute[]): boolean {
+        return this.every((v, i) => (v & schema[i].max) === schema[i].max);
     }
 
     /**
      * Transforms the box into a tuple
      */
-    public tuple(schema: Array<Attribute>): Tuple {
+    public tuple(schema: Attribute[]): Tuple {
         const tuple = this.map((v, i) => v ^ schema[i].max);
         return Tuple.from(tuple);
     }
@@ -43,9 +44,9 @@ export class Box implements ArrayLike<bigint> {
      */
     public contains(other: Box): boolean {
         return this.every((_, i) => {
-            let msb_a = Dyadic.msb(this[i]);
-            let msb_b = Dyadic.msb(other[i]);
-            return other[i] >> BigInt(Math.abs(msb_b - msb_a)) == this[i];
+            const msb_a = Dyadic.msb(this[i]);
+            const msb_b = Dyadic.msb(other[i]);
+            return other[i] >> BigInt(Math.abs(msb_b - msb_a)) === this[i];
         });
     }
 
@@ -53,10 +54,10 @@ export class Box implements ArrayLike<bigint> {
      * Splits a given box b along its first thick dimension
      * @param b The box to be split
      */
-    public split(schema: Array<Attribute>): [Box, Box] {
-        let thick = this.findIndex((int, idx) => (int & schema[idx].max) == 0n);
-        let b1 = Box.of(...this.slice(0, thick), this[thick] << 1n, ...this.slice(thick + 1));
-        let b2 = Box.of(...this.slice(0, thick), (this[thick] << 1n) + 1n, ...this.slice(thick + 1));
+    public split(schema: Attribute[]): [Box, Box] {
+        const thick = this.findIndex((int, idx) => (int & schema[idx].max) === 0n);
+        const b1 = Box.of(...this.slice(0, thick), this[thick] << 1n, ...this.slice(thick + 1));
+        const b2 = Box.of(...this.slice(0, thick), (this[thick] << 1n) + 1n, ...this.slice(thick + 1));
         return [b1, b2];
     }
 
@@ -65,10 +66,10 @@ export class Box implements ArrayLike<bigint> {
      * @param other Other box
      */
     public resolve(other: Box): Box {
-        let p = this.findIndex((_, i) => other[i] == this[i] + 1n);
-        let r = this.map((_, i) => {
-            let msb_a = Dyadic.msb(this[i]);
-            let msb_b = Dyadic.msb(other[i]);
+        const p = this.findIndex((_, i) => other[i] === this[i] + 1n);
+        const r = this.map((_, i) => {
+            const msb_a = Dyadic.msb(this[i]);
+            const msb_b = Dyadic.msb(other[i]);
             return msb_a > msb_b ? this[i] : other[i];
         });
         r[p] >>= 1n;
@@ -83,7 +84,7 @@ export class Box implements ArrayLike<bigint> {
         return Array.prototype.findIndex.call(this, predicate);
     }
 
-    private map<U>(callbackfn: (value: bigint, index: number, array: any[]) => U): Array<U> {
+    private map<U>(callbackfn: (value: bigint, index: number, array: any[]) => U): U[] {
         return Array.prototype.map.call(this, callbackfn);
     }
 

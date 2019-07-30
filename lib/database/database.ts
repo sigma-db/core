@@ -1,17 +1,15 @@
-﻿import { Attribute, IAttributeLike } from './attribute';
-import { Relation } from './relation';
-import { ObjectSchema, Type } from './serialisation';
-import { TransactionLog } from './transaction';
+﻿import { Attribute, IAttributeLike } from "./attribute";
+import { Relation } from "./relation";
+import { ObjectSchema, Type } from "./serialisation";
+import { TransactionLog } from "./transaction";
 
 export interface ISchema {
     [name: string]: Relation;
 }
 
 export abstract class Database {
-    protected readonly relations: { [name: string]: Relation } = {};
-
     /**
-     * Opens an existing database stored at the specified location 
+     * Opens an existing database stored at the specified location
      * or creates a new one if it does not yet exist.
      */
     public static open(path: string): Database {
@@ -26,12 +24,14 @@ export abstract class Database {
         return new DatabaseTemp();
     }
 
+    protected readonly relations: { [name: string]: Relation } = {};
+
     /**
      * Creates a new relation
      * @param name The name of the relation
      * @param schema The attributes of the relation
      */
-    public createRelation(name: string, schema: Array<Attribute>): void {
+    public createRelation(name: string, schema: Attribute[]): void {
         if (!this.relations[name]) {
             this.relations[name] = this.relationConstructor(name, schema);
         } else {
@@ -73,18 +73,18 @@ export abstract class Database {
      */
     public close(): void { }
 
-    protected abstract relationConstructor(name: string, schema: Array<Attribute>): Relation;
+    protected abstract relationConstructor(name: string, schema: Attribute[]): Relation;
 }
 
 class DatabaseTemp extends Database {
-    protected relationConstructor(name: string, schema: Array<Attribute>): Relation {
+    protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema);
     }
 }
 
 interface ICreateTransaction {
     name: string;
-    attrs: Array<IAttributeLike>;
+    attrs: IAttributeLike[];
 }
 
 class DatabaseLogged extends Database {
@@ -94,8 +94,8 @@ class DatabaseLogged extends Database {
         attrs: Type.ARRAY(Type.OBJECT({
             name: Type.STRING,
             type: Type.STRING,
-            width: Type.INT16
-        }))
+            width: Type.INT16,
+        })),
     }));
 
     constructor(private log: TransactionLog) {
@@ -108,16 +108,16 @@ class DatabaseLogged extends Database {
         log.load();
     }
 
-    public createRelation(name: string, schema: Array<Attribute>): void {
+    public createRelation(name: string, schema: Attribute[]): void {
         super.createRelation(name, schema);
-        this.log.write<ICreateTransaction>(DatabaseLogged.CREATION_ID, { name: name, attrs: schema });
+        this.log.write<ICreateTransaction>(DatabaseLogged.CREATION_ID, { name, attrs: schema });
     }
 
     public close(): void {
         this.log.close();
     }
 
-    protected relationConstructor(name: string, schema: Array<Attribute>): Relation {
+    protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema, { log: this.log });
     }
 }

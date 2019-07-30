@@ -8,25 +8,31 @@ We developed sigmaJS in a manner that facilitates easy modification of almost an
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
 
 ## Prerequisites
+
 * In order to run sigmaJS, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
 
 ## Installation and Use
+
 [![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
 
 To install the package from [npm](https://www.npmjs.com/), simply run `npm i -g sigma-db`.
 Thereafter, you can run sigmaJS in one of two ways:
+
 * In *CLI* mode, you can directly modify the database from the command line. To execute sigmaJS in *CLI* mode, run `sigma-db cli </path/to/database>`.
 * In *server* mode, the database's data is exposed via a TCP port to be remotely accessed. Run `sigma-db serve </path/to/database> --port=4711` to execute sigmaJS in *server* mode.
 
 ## Custom Build
+
 If instead you want to clone the repository and build sigmaJS from source by yourself, follow these steps:
+
 * Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
-* To build the library and the accompanying client application, run `npm install -g`.
+* To build the library and the accompanying client application, run `npm run build`.
 
 You can now use sigmaJS as described in [Installation and Use](#installation-and-use)
 
 ## Query Language
+
 We discern three types of queries, whose syntax we outline by example:
 
 1. To **create** a new relation *Employee* with attributes *id*, *name*, *salary* and *boss* of types `int`, `string`, `int` and `int`, respectively, write `Employee: (id: int, name: string, salary: int, boss: int)`. Supported data types are `int`, `string`, `char` and `bool`.
@@ -35,6 +41,7 @@ We discern three types of queries, whose syntax we outline by example:
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
 
 ## Usage as a Library
+
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
 ```TypeScript
@@ -69,7 +76,9 @@ db.close();
 ```
 
 ## Limitations
+
 There are quite a few functionalities essential to a real-world DBMS we do *not* support as of now, including:
+
 * aggregation queries
 * concurrent access
 * parallel/distributed query evaluation

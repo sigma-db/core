@@ -30,7 +30,7 @@ export class Dyadic {
         const root = Dyadic.msb(start ^ end) + 1;  // index i of most significant bit s.t. start[j] == end[j] f.a. j > i
         const mask = (1n << BigInt(root)) - 1n;
 
-        if ((start & mask) == 0n && (end & mask) == mask) {
+        if ((start & mask) === 0n && (end & mask) === mask) {
             yield (start >> BigInt(root)) ^ (1n << BigInt(exp - root));
         } else {
             yield* Dyadic.dyadic(start, start | (mask >> 1n), exp);

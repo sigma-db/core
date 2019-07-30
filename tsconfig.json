@@ -4,7 +4,12 @@
     "module": "commonjs",
     "outDir": "dist",
     "target": "esnext",
-    "sourceMap": true
+    "sourceMap": true,
+    "plugins": [
+      {
+        "name": "typescript-tslint-plugin"
+      }
+    ]
   },
   "exclude": [
     "node_modules"

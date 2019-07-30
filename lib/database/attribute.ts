@@ -7,15 +7,13 @@ export interface IAttributeLike {
 }
 
 export abstract class Attribute implements IAttributeLike {
-    constructor(private _name: string, private _type: DataType, private _width: number) { }
-
     public static create(name: string, type: DataType, width?: number): Attribute {
         switch (type) {
             case DataType.INT: return new IntAttribute(name, width || 4);
             case DataType.CHAR: return new CharAttribute(name);
             case DataType.STRING: return new StringAttribute(name, width || 32);
             case DataType.BOOL: return new BoolAttribute(name);
-            default: throw new Error('Unsupported data type!');
+            default: throw new Error("Unsupported data type!");
         }
     }
 
@@ -25,9 +23,11 @@ export abstract class Attribute implements IAttributeLike {
             case DataType.CHAR: return Object.setPrototypeOf(attr, CharAttribute.prototype);
             case DataType.STRING: return Object.setPrototypeOf(attr, StringAttribute.prototype);
             case DataType.BOOL: return Object.setPrototypeOf(attr, BoolAttribute.prototype);
-            default: throw new Error('Unsupported data type!');
+            default: throw new Error("Unsupported data type!");
         }
     }
+
+    constructor(private _name: string, private _type: DataType, private _width: number) { }
 
     public get name(): string {
         return this._name;

@@ -1,8 +1,8 @@
-﻿import { createReadStream } from 'fs';
-import { createInterface } from 'readline';
+﻿import { createReadStream } from "fs";
+import { createInterface } from "readline";
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
 import { IAtom } from "./evaluation/atom";
-import { Projection, TetrisJoin, SelingerJoin } from "./evaluation/operators";
+import { Projection, SelingerJoin, TetrisJoin } from "./evaluation/operators";
 import { ValueSet } from "./evaluation/variable";
 import { IQuery } from "./index";
 import { IAtomCQ, ICreateCQ, IInfoCQ, IInsertCQ, ILoadCQ, INamedValueCQ, ISelectCQ, ITupleCQ, Literal, parse, VariableName } from "./parsers/cq";
@@ -23,12 +23,12 @@ class InsertCQ implements IQuery {
     constructor(private query: IInsertCQ) { }
 
     public execute(db: Database): void {
-        let raw: Array<Literal>;
-        if (this.query.tuple.type == TupleType.UNNAMED) {
+        let raw: Literal[];
+        if (this.query.tuple.type === TupleType.UNNAMED) {
             const tuple = this.query.tuple;
             raw = tuple.vals.map(v => v.val);
         } else {
-            const { vals } = <ITupleCQ<INamedValueCQ<Literal>>>this.query.tuple;
+            const { vals } = <ITupleCQ<INamedValueCQ<Literal>>> this.query.tuple;
             raw = db.relation(this.query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
         }
         const _tuple = Tuple.from(raw);
@@ -42,44 +42,9 @@ class SelectCQ implements IQuery {
 
     constructor(private query: ISelectCQ) { }
 
-    private resolve(cqatoms: Array<IAtomCQ>, schema: ISchema): [ValueSet, Array<IAtom>] {
-        const valset = new ValueSet();
-        const atoms = cqatoms.map(atom => {
-            if (atom.type == TupleType.UNNAMED) {
-                return {
-                    rel: schema[atom.rel],
-                    vars: atom.vals.map((v, i) => {
-                        const { type, width } = schema[atom.rel].schema[i];
-                        if (v.type == ValueType.VARIABLE) {
-                            return valset.variable(type, width, <string>v.val);
-                        } else {
-                            throw new Error("Constants are not yet supported!");
-                        }
-                    })
-                };
-            } else {
-                const { rel, vals } = atom;
-                return {
-                    rel: schema[atom.rel],
-                    vars: schema[rel].schema.map(spec => {
-                        const v = vals.find(v => (<INamedValueCQ<VariableName>>v).attr === spec.name);
-                        if (!v) {
-                            return valset.variable(spec.type, spec.width);
-                        } else if (v.type == ValueType.VARIABLE) {
-                            return valset.variable(spec.type, spec.width, <string>v.val);
-                        } else {
-                            throw new Error("Constants are not yet supported!");
-                        }
-                    })
-                };
-            }
-        });
-        return [valset, atoms];
-    }
-
     public execute(db: Database): Relation {
         const [valset, atoms] = this.resolve(this.query.body, db.schema);
-        const queryAttrs = <Array<INamedValueCQ<VariableName>>>this.query.attrs;
+        const queryAttrs = <Array<INamedValueCQ<VariableName>>> this.query.attrs;
         const schema = queryAttrs.map(({ attr, val }) => Attribute.create(attr, valset.get(val).type, valset.get(val).width));
         const prjSchema = queryAttrs.map(({ val }) => valset.get(val).id);
 
@@ -89,6 +54,41 @@ class SelectCQ implements IQuery {
 
         return result.freeze();
     }
+
+    private resolve(cqatoms: IAtomCQ[], schema: ISchema): [ValueSet, IAtom[]] {
+        const valset = new ValueSet();
+        const atoms = cqatoms.map(atom => {
+            if (atom.type === TupleType.UNNAMED) {
+                return {
+                    rel: schema[atom.rel],
+                    vars: atom.vals.map((v, i) => {
+                        const { type, width } = schema[atom.rel].schema[i];
+                        if (v.type === ValueType.VARIABLE) {
+                            return valset.variable(type, width, v.val as string);
+                        } else {
+                            throw new Error("Constants are not yet supported!");
+                        }
+                    }),
+                };
+            } else {
+                const { rel, vals } = atom;
+                return {
+                    rel: schema[atom.rel],
+                    vars: schema[rel].schema.map(spec => {
+                        const v = vals.find(v => (<INamedValueCQ<VariableName>> v).attr === spec.name);
+                        if (!v) {
+                            return valset.variable(spec.type, spec.width);
+                        } else if (v.type === ValueType.VARIABLE) {
+                            return valset.variable(spec.type, spec.width, v.val as string);
+                        } else {
+                            throw new Error("Constants are not yet supported!");
+                        }
+                    }),
+                };
+            }
+        });
+        return [valset, atoms];
+    }
 }
 
 class InfoCQ implements IQuery {
@@ -97,12 +97,12 @@ class InfoCQ implements IQuery {
         Attribute.create("Arity", DataType.INT),
         Attribute.create("Cardinality", DataType.INT),
         Attribute.create("Logged", DataType.BOOL),
-        Attribute.create("Static", DataType.BOOL)
+        Attribute.create("Static", DataType.BOOL),
     ];
     private static readonly RELATION_SCHEMA = [
         Attribute.create("Attribute", DataType.STRING, 32),
         Attribute.create("Data Type", DataType.STRING, 8),
-        Attribute.create("Width", DataType.INT)
+        Attribute.create("Width", DataType.INT),
     ];
 
     constructor(private query: IInfoCQ) { }
@@ -131,7 +131,7 @@ class LoadCQ implements IQuery {
 
     public execute(db: Database): void {
         const reader = createInterface(createReadStream(this.query.fpath));
-        reader.on('line', line => {
+        reader.on("line", line => {
             CQQuery.parse(line).execute(db);
         });
         reader.close();
@@ -142,11 +142,11 @@ export class CQQuery {
     public static parse(q: string): IQuery {
         const _q = parse(q);
         switch (_q.type) {
-            case QueryType.CREATE: return new CreateCQ(<ICreateCQ>_q);
-            case QueryType.INSERT: return new InsertCQ(<IInsertCQ>_q);
-            case QueryType.SELECT: return new SelectCQ(<ISelectCQ>_q);
-            case QueryType.INFO: return new InfoCQ(<IInfoCQ>_q);
-            case QueryType.LOAD: return new LoadCQ(<ILoadCQ>_q);
+            case QueryType.CREATE: return new CreateCQ(_q as ICreateCQ);
+            case QueryType.INSERT: return new InsertCQ(_q as IInsertCQ);
+            case QueryType.SELECT: return new SelectCQ(_q as ISelectCQ);
+            case QueryType.INFO: return new InfoCQ(_q as IInfoCQ);
+            case QueryType.LOAD: return new LoadCQ(_q as ILoadCQ);
             default: throw new Error("Unsupported query type.");
         }
     }

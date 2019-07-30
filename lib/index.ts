@@ -1,2 +1,2 @@
-﻿export { Database } from './database';
-export { Query } from './query';
+﻿export { Database } from "./database";
+export { Query } from "./query";

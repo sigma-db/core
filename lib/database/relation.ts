@@ -5,7 +5,7 @@ import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
 
-type TSchema = Array<Attribute>
+type TSchema = Attribute[];
 
 interface IOptions {
     throwsOnDuplicate: boolean;
@@ -13,7 +13,7 @@ interface IOptions {
 }
 
 class DuplicateTupleError extends Error {
-    constructor(private _rel: string, private _tuple: Tuple, private _schema: Array<Attribute>) {
+    constructor(private _rel: string, private _tuple: Tuple, private _schema: Attribute[]) {
         super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
     }
 
@@ -27,31 +27,6 @@ class DuplicateTupleError extends Error {
 }
 
 export abstract class Relation implements Iterable<Tuple> {
-    protected _name: string;
-    protected _schema: TSchema;
-    protected _tuples: SkipList<Tuple>;
-    private _boundaries: [Array<bigint>, Array<bigint>, Array<number>, Array<bigint>];
-
-    /**
-     * Default options to create the relation with if not specified differently by the user
-     */
-    private static readonly defaultOptions: Partial<IOptions> = {
-        throwsOnDuplicate: true,
-        log: undefined
-    }
-
-    constructor(name: string, schema: TSchema, tuples: SkipList<Tuple>) {
-        this._name = name;
-        this._schema = schema;
-        this._tuples = tuples;
-        this._boundaries = [
-            this._schema.map(attr => attr.min - 1n),
-            this._schema.map(attr => attr.max),
-            this._schema.map(attr => attr.exp),
-            this._schema.map(attr => attr.wildcard)
-        ];
-    }
-
     /**
      * Creates a new relation
      * @param name The name of the relation
@@ -83,6 +58,31 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
+     * Default options to create the relation with if not specified differently by the user
+     */
+    private static readonly defaultOptions: Partial<IOptions> = {
+        throwsOnDuplicate: true,
+        log: undefined,
+    };
+
+    protected _name: string;
+    protected _schema: TSchema;
+    protected _tuples: SkipList<Tuple>;
+    private _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
+
+    constructor(name: string, schema: TSchema, tuples: SkipList<Tuple>) {
+        this._name = name;
+        this._schema = schema;
+        this._tuples = tuples;
+        this._boundaries = [
+            this._schema.map(attr => attr.min - 1n),
+            this._schema.map(attr => attr.max),
+            this._schema.map(attr => attr.exp),
+            this._schema.map(attr => attr.wildcard),
+        ];
+    }
+
+    /**
      * The name of the relation
      */
     public get name(): string {
@@ -92,7 +92,7 @@ export abstract class Relation implements Iterable<Tuple> {
     /**
      * The relation schema as specified during the creation
      */
-    public get schema(): Array<Attribute> {
+    public get schema(): Attribute[] {
         return this._schema;
     }
 
@@ -141,26 +141,19 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
-     * Returns a new relation sharing the state of this relation, 
+     * Returns a new relation sharing the state of this relation,
      * but not allowing further modifications of its tuple set.
      */
     public freeze(): Relation {
         return new RelationStatic(this._name, this._schema, this._tuples);
     }
 
-    private _gaps(tuple: Tuple, dim: number, start: bigint, end: bigint): Array<Box> {
-        const [, max, exp, wildcard] = this._boundaries;
-        let front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
-        let back = wildcard.slice(dim + 1);
-        return Dyadic.get(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
-    }
-
     /**
      * Infer any gaps surrounding the given tuple within the relation
      * @param tuple The tuple to probe
      */
-    public gaps(tuple: Tuple): Array<Box> {
-        const gaps: Array<Box> = [];
+    public gaps(tuple: Tuple): Box[] {
+        const gaps: Box[] = [];
         const [min, max, exp, wildcard] = this._boundaries;
         const [pred, succ] = this._tuples.find(tuple);
 
@@ -170,37 +163,37 @@ export abstract class Relation implements Iterable<Tuple> {
         } else if (!succ) {
             // probe tuple is behind last element in relation
             for (let j = 0; j < this.arity; j++) {
-                let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
-                let back = wildcard.slice(j + 1);
+                const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
+                const back = wildcard.slice(j + 1);
                 Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
-        } else if (succ.compareTo(tuple) == 0) {
+        } else if (succ.compareTo(tuple) === 0) {
             // probe tuple is in relation --> return empty box set
         } else if (!pred) {
             // probe tuple is before first element in relation
             for (let j = 0; j < this.arity; j++) {
-                let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
-                let back = wildcard.slice(j + 1);
+                const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
+                const back = wildcard.slice(j + 1);
                 Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
         } else {
             // probe tuple is between pred and succ
-            let s = succ.findIndex((_, idx) => pred[idx] != succ[idx]);
+            const s = succ.findIndex((_, idx) => pred[idx] !== succ[idx]);
 
             for (let j = s + 1; j < this.arity; j++) {
-                let front = pred.slice(0, j).map((z, i) => z ^ max[i]);
-                let back = wildcard.slice(j + 1);
+                const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
+                const back = wildcard.slice(j + 1);
                 Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
             for (let j = s + 1; j < this.arity; j++) {
-                let front = succ.slice(0, j).map((z, i) => z ^ max[i]);
-                let back = wildcard.slice(j + 1);
+                const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
+                const back = wildcard.slice(j + 1);
                 Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
-            let front = pred.slice(0, s).map((z, i) => z ^ max[i]);
-            let back = wildcard.slice(s + 1);
+            const front = pred.slice(0, s).map((z, i) => z ^ max[i]);
+            const back = wildcard.slice(s + 1);
             Dyadic.get(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
         }
 
@@ -211,13 +204,20 @@ export abstract class Relation implements Iterable<Tuple> {
      * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
      */
     public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
-        for (let tuple of this._tuples) {
+        for (const tuple of this._tuples) {
             yield tuple.toObject(this._schema);
         }
     }
 
     public *[Symbol.iterator](): IterableIterator<Tuple> {
         yield* this._tuples;
+    }
+
+    private _gaps(tuple: Tuple, dim: number, start: bigint, end: bigint): Box[] {
+        const [, max, exp, wildcard] = this._boundaries;
+        const front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
+        const back = wildcard.slice(dim + 1);
+        return Dyadic.get(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
     }
 }
 
@@ -238,7 +238,7 @@ class RelationLogged extends Relation {
     private log: TransactionLog;
     private id: number;
 
-    constructor(name: string, schema: Array<Attribute>, tuples: SkipList<Tuple>, log: TransactionLog) {
+    constructor(name: string, schema: Attribute[], tuples: SkipList<Tuple>, log: TransactionLog) {
         super(name, schema, tuples);
         const tupleSchema = schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));

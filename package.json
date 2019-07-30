@@ -15,8 +15,8 @@
     "@types/node": "^11.9.4",
     "@types/yargs": "^12.0.9",
     "pegjs": "^0.11.0-dev.325",
-    "tslint": "^5.12.1",
-    "typescript": "^3.3.3"
+    "typescript": "^3.5.3",
+    "typescript-tslint-plugin": "^0.5.4"
   },
   "scripts": {
     "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc"

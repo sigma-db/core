@@ -1,0 +1,18 @@
+{
+    "extends": "tslint:latest",
+    "rules": {
+        "arrow-parens": false,
+        "object-literal-sort-keys": false,
+        "max-classes-per-file": false,
+        "variable-name": {
+            "options": "allow-leading-underscore"
+        },
+        "no-bitwise": false,
+        "no-console": false
+    },
+    "linterOptions": {
+        "exclude": [
+            "tests/**/*"
+        ]
+    }
+}

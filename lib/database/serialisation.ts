@@ -1,12 +1,12 @@
 /**
  * Data types that can be encoded and decoded
  */
-type TType = number | bigint | string | boolean | Array<object> | object;
+type TType = number | bigint | string | boolean | object[] | object;
 
 /**
  * A mapping of an object's property names to their respective data type
  */
-type TSchema = { [name: string]: IType<TType> }
+interface ISchema { [name: string]: IType<TType>; }
 
 interface IType<T> {
     /**
@@ -62,6 +62,7 @@ class BigIntType implements IType<bigint> {
     public encode(val: bigint, buf: Buffer, pos: number): void {
         let offset: number;
         for (offset = 4; val > 0n; offset++) {
+            // tslint:disable-next-line: no-bitwise
             buf.writeUInt8(Number(val & 0xFFn), pos + offset);
             val >>= 8n;
         }
@@ -92,12 +93,12 @@ class BigIntType implements IType<bigint> {
 class StringType implements IType<string> {
     public encode(val: string, buf: Buffer, pos: number): void {
         buf.writeInt32LE(val.length, pos);
-        buf.write(val, pos + 4, val.length, 'ascii');
+        buf.write(val, pos + 4, val.length, "ascii");
     }
 
     public decode(buf: Buffer, pos: number): string {
         const len = buf.readInt32LE(pos);
-        return buf.toString('ascii', pos + 4, pos + len + 4)
+        return buf.toString("ascii", pos + 4, pos + len + 4);
     }
 
     public size(val: string): number {
@@ -133,10 +134,10 @@ class CharType implements IType<string> {
     }
 }
 
-class ArrayType implements IType<Array<object>> {
+class ArrayType implements IType<object[]> {
     constructor(private type: IType<TType>) { }
 
-    public encode(val: Array<object>, buf: Buffer, pos: number): void {
+    public encode(val: object[], buf: Buffer, pos: number): void {
         buf.writeInt32LE(val.length, pos);
         pos += 4;
         val.forEach(v => {
@@ -145,26 +146,26 @@ class ArrayType implements IType<Array<object>> {
         });
     }
 
-    public decode(buf: Buffer, pos: number): Array<object> {
+    public decode(buf: Buffer, pos: number): object[] {
         const len = buf.readInt32LE(pos);
         const result = new Array<object>(len);
         pos += 4;
         for (let i = 0; i < len; i++) {
-            result[i] = <object>(this.type.decode(buf, pos));
+            result[i] = this.type.decode(buf, pos) as object;
             pos += this.type.size(result[i]);
         }
         return result;
     }
 
-    public size(val: Array<object>): number {
+    public size(val: object[]): number {
         return val.reduce((p, c) => p + this.type.size(c), 0) + 4;
     }
 }
 
-class TupleType implements IType<Array<object>> {
+class TupleType implements IType<object[]> {
     constructor(private type: Array<IType<TType>>) { }
 
-    public encode(val: Array<object>, buf: Buffer, pos: number): void {
+    public encode(val: object[], buf: Buffer, pos: number): void {
         buf.writeInt32LE(val.length, pos);
         pos += 4;
         val.forEach((v, i) => {
@@ -173,18 +174,18 @@ class TupleType implements IType<Array<object>> {
         });
     }
 
-    public decode(buf: Buffer, pos: number): Array<object> {
+    public decode(buf: Buffer, pos: number): object[] {
         const len = buf.readInt32LE(pos);
         const result = new Array<object>(len);
         pos += 4;
         for (let i = 0; i < len; i++) {
-            result[i] = <object>(this.type[i].decode(buf, pos));
+            result[i] = this.type[i].decode(buf, pos) as object;
             pos += this.type[i].size(result[i]);
         }
         return result;
     }
 
-    public size(val: Array<object>): number {
+    public size(val: object[]): number {
         return val.reduce((p, c, i) => p + this.type[i].size(c), 0) + 4;
     }
 }
@@ -192,14 +193,14 @@ class TupleType implements IType<Array<object>> {
 class ObjectType implements IType<object> {
     private entries: Array<[string, IType<TType>]>;
 
-    constructor(schema: TSchema) {
+    constructor(schema: ISchema) {
         this.entries = Object.entries(schema).sort(([k1, _x], [k2, _y]) => k1.localeCompare(k2));
     }
 
     public encode(val: object, buf: Buffer, pos: number): void {
         this.entries.forEach(([p, t]) => {
-            t.encode((<any>val)[p], buf, pos);
-            pos += t.size((<any>val)[p]);
+            t.encode((val as any)[p], buf, pos);
+            pos += t.size((val as any)[p]);
         });
     }
 
@@ -215,7 +216,7 @@ class ObjectType implements IType<object> {
     }
 
     public size(val: object): number {
-        return this.entries.reduce((p, [key, type]) => p + type.size((<any>val)[key]), 0);
+        return this.entries.reduce((p, [key, type]) => p + type.size((val as any)[key]), 0);
     }
 }
 
@@ -230,12 +231,10 @@ export const Type = Object.freeze({
     BIGINT: new BigIntType(),
     ARRAY: (type: IType<TType>) => new ArrayType(type),
     TUPLE: (types: Array<IType<TType>>) => new TupleType(types),
-    OBJECT: (schema: TSchema) => new ObjectType(schema)
+    OBJECT: (schema: ISchema) => new ObjectType(schema),
 });
 
 export class ObjectSchema {
-    private constructor(private root: IType<TType>) { }
-
     /**
      * Creates a new schema from a given object specification
      * @param type The type specification of the object to encode
@@ -243,6 +242,8 @@ export class ObjectSchema {
     public static create(type: IType<TType>): ObjectSchema {
         return new ObjectSchema(type);
     }
+
+    private constructor(private root: IType<TType>) { }
 
     /**
      * Writes an object to a buffer

@@ -3,7 +3,7 @@
 type KV<T> = [bigint, T];
 
 class TrieNode<T> {
-    children: Array<TrieNode<T>>;   // array of size 2: index 0 refers to left child, index 1 to right child
+    public children: Array<TrieNode<T>>;   // array of size 2: index 0 refers to left child, index 1 to right child
 
     constructor(public value?: T) {
         this.children = new Array<TrieNode<T>>(2);
@@ -28,7 +28,7 @@ export class DyadicTrie<T> {
         let node = this.root;
 
         for (let i = msb - 1n; i >= 0n; i--) {
-            let child = Number(BigInt.asIntN(1, key >> i));
+            const child = Number(BigInt.asIntN(1, key >> i));
             if (!node.children[child]) {
                 node.children[child] = new TrieNode<T>();
             }

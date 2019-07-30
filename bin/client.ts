@@ -1,8 +1,8 @@
 ﻿#!/usr/bin/env node
-import * as express from 'express';
-import * as readline from 'readline';
-import * as yargs from 'yargs';
-import { Database, Query } from '../lib';
+import * as express from "express";
+import * as readline from "readline";
+import * as yargs from "yargs";
+import { Database, Query } from "../lib";
 
 abstract class Client {
     constructor(protected db: Database) {
@@ -21,7 +21,7 @@ class Server extends Client {
     constructor(db: Database, private port: number) {
         super(db);
         this.app = express();
-        this.app.get('/query/:query', (req, res) => {
+        this.app.get("/query/:query", (req, res) => {
             const result = this.onQuery(req.params.query);
             res.json(result);
         });
@@ -39,10 +39,10 @@ class Server extends Client {
                     success: true,
                     name: result.name,
                     size: result.size,
-                    tuples: [...result.tuples()]
-                }
+                    tuples: [...result.tuples()],
+                };
             } else {
-                return { success: true }
+                return { success: true };
             }
         } catch (e) {
             return { success: false, error: e.message };
@@ -58,10 +58,10 @@ class CLI extends Client {
         this.repl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
-            prompt: '> '
+            prompt: "> ",
         });
-        this.repl.on('line', input => this.onLine(input));
-        this.repl.on('close', () => this.onClose());
+        this.repl.on("line", input => this.onLine(input));
+        this.repl.on("close", () => this.onClose());
     }
 
     public start(): void {
@@ -69,7 +69,7 @@ class CLI extends Client {
     }
 
     private onClose(): void {
-        this.db.close()
+        this.db.close();
     }
 
     private onLine(input: string): void {
@@ -90,29 +90,30 @@ class CLI extends Client {
     }
 }
 
+// tslint:disable-next-line: no-unused-expression
 yargs
     .scriptName("sigma")
     .command(
-        'serve',
-        'Makes the database instance accessible via a TCP port',
+        "serve",
+        "Makes the database instance accessible via a TCP port",
         yargs => yargs
-            .positional('port', { alias: 'p', default: 54711, type: 'number' })
-            .positional('temp', { alias: 't', default: true, type: 'boolean' })
-            .positional('engine', { alias: 'e', default: 'geometric', type: 'string' }),
+            .positional("port", { alias: "p", default: 54711, type: "number" })
+            .positional("temp", { alias: "t", default: true, type: "boolean" })
+            .positional("engine", { alias: "e", default: "geometric", type: "string" }),
         ({ port, temp, _ }) => {
             const db = temp ? Database.temp() : Database.open(_[1]);
             new Server(db, port).start();
         })
     .command(
-        'cli',
-        'Provides a CLI for instant interaction with the database instance',
+        "cli",
+        "Provides a CLI for instant interaction with the database instance",
         yargs => yargs
-            .positional('temp', { alias: 't', default: true, type: 'boolean' })
-            .positional('engine', { alias: 'e', default: 'geometric', type: 'string' }),
+            .positional("temp", { alias: "t", default: true, type: "boolean" })
+            .positional("engine", { alias: "e", default: "geometric", type: "string" }),
         ({ temp, _ }) => {
             const db = temp ? Database.temp() : Database.open(_[1]);
             new CLI(db).start();
         })
-    .demandCommand(1, 1, 'Specify how to connect to the database')
+    .demandCommand(1, 1, "Specify how to connect to the database")
     .help()
     .argv;

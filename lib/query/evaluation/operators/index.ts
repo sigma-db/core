@@ -1,3 +1,3 @@
-export * from './projection';
-export * from './selinger-join';
-export * from './tetris-join';
+export * from "./projection";
+export * from "./selinger-join";
+export * from "./tetris-join";
