@@ -1,34 +1,48 @@
-﻿import { createReadStream } from "fs";
-import { createInterface } from "readline";
-import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
-import { IAtom } from "./evaluation/atom";
-import { Projection, SelingerJoin, TetrisJoin } from "./evaluation/operators";
-import { ValueSet } from "./evaluation/variable";
-import { IQuery } from "./index";
-import { IAtomCQ, ICreateCQ, IInfoCQ, IInsertCQ, ILoadCQ, INamedValueCQ, ISelectCQ, ITupleCQ, Literal, parse, VariableName } from "./parsers/cq";
+﻿import { Engine } from "..";
+import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../../database";
+import { IAtom } from "../../query/evaluation/atom";
+import { ValueSet } from "../../query/evaluation/variable";
+import { Query } from "../../query/internal";
+import {
+    IAtomCQ,
+    ICreateCQ,
+    IInfoCQ,
+    IInsertCQ,
+    INamedValueCQ,
+    ISelectCQ,
+    ITupleCQ,
+    Literal,
+    parse,
+    VariableName,
+} from "../../query/parsers/cq";
+import { Projection, TetrisJoin } from "./operators";
 
-enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info", LOAD = "load" }
+enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 
-class CreateCQ implements IQuery {
-    constructor(private query: ICreateCQ) { }
+class CreateCQ extends Engine {
+    constructor(private readonly query: ICreateCQ) {
+        super();
+    }
 
-    public execute(db: Database): void {
+    public evaluate(db: Database): void {
         db.createRelation(this.query.rel, this.query.attrs.map(spec => Attribute.from(spec)));
     }
 }
 
-class InsertCQ implements IQuery {
-    constructor(private query: IInsertCQ) { }
+class InsertCQ extends Engine {
+    constructor(private readonly query: IInsertCQ) {
+        super();
+    }
 
-    public execute(db: Database): void {
+    public evaluate(db: Database): void {
         let raw: Literal[];
         if (this.query.tuple.type === TupleType.UNNAMED) {
             const tuple = this.query.tuple;
             raw = tuple.vals.map(v => v.val);
         } else {
-            const { vals } = <ITupleCQ<INamedValueCQ<Literal>>> this.query.tuple;
+            const { vals } = this.query.tuple as ITupleCQ<INamedValueCQ<Literal>>;
             raw = db.relation(this.query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
         }
         const _tuple = Tuple.from(raw);
@@ -36,15 +50,17 @@ class InsertCQ implements IQuery {
     }
 }
 
-class SelectCQ implements IQuery {
-    private static readonly JOIN = new SelingerJoin();
+class SelectCQ extends Engine {
+    private static readonly JOIN = new TetrisJoin();
     private static readonly PROJECT = new Projection();
 
-    constructor(private query: ISelectCQ) { }
+    constructor(private readonly query: ISelectCQ) {
+        super();
+    }
 
-    public execute(db: Database): Relation {
+    public evaluate(db: Database): Relation {
         const [valset, atoms] = this.resolve(this.query.body, db.schema);
-        const queryAttrs = <Array<INamedValueCQ<VariableName>>> this.query.attrs;
+        const queryAttrs = this.query.attrs as Array<INamedValueCQ<VariableName>>;
         const schema = queryAttrs.map(({ attr, val }) => Attribute.create(attr, valset.get(val).type, valset.get(val).width));
         const prjSchema = queryAttrs.map(({ val }) => valset.get(val).id);
 
@@ -75,7 +91,7 @@ class SelectCQ implements IQuery {
                 return {
                     rel: schema[atom.rel],
                     vars: schema[rel].schema.map(spec => {
-                        const v = vals.find(v => (<INamedValueCQ<VariableName>> v).attr === spec.name);
+                        const v = vals.find(val => (val as INamedValueCQ<VariableName>).attr === spec.name);
                         if (!v) {
                             return valset.variable(spec.type, spec.width);
                         } else if (v.type === ValueType.VARIABLE) {
@@ -91,7 +107,7 @@ class SelectCQ implements IQuery {
     }
 }
 
-class InfoCQ implements IQuery {
+class InfoCQ extends Engine {
     private static readonly DATABASE_SCHEMA = [
         Attribute.create("Relation", DataType.STRING, 32),
         Attribute.create("Arity", DataType.INT),
@@ -105,9 +121,11 @@ class InfoCQ implements IQuery {
         Attribute.create("Width", DataType.INT),
     ];
 
-    constructor(private query: IInfoCQ) { }
+    constructor(private readonly query: IInfoCQ) {
+        super();
+    }
 
-    public execute(db: Database): Relation {
+    public evaluate(db: Database): Relation {
         let result: Relation;
         if (!this.query.rel) {
             result = Relation.create("Database Schema", InfoCQ.DATABASE_SCHEMA);
@@ -126,27 +144,14 @@ class InfoCQ implements IQuery {
     }
 }
 
-class LoadCQ implements IQuery {
-    constructor(private query: ILoadCQ) { }
-
-    public execute(db: Database): void {
-        const reader = createInterface(createReadStream(this.query.fpath));
-        reader.on("line", line => {
-            CQQuery.parse(line).execute(db);
-        });
-        reader.close();
-    }
-}
-
 export class CQQuery {
-    public static parse(q: string): IQuery {
+    public static parse(q: string): Query {
         const _q = parse(q);
         switch (_q.type) {
             case QueryType.CREATE: return new CreateCQ(_q as ICreateCQ);
             case QueryType.INSERT: return new InsertCQ(_q as IInsertCQ);
             case QueryType.SELECT: return new SelectCQ(_q as ISelectCQ);
             case QueryType.INFO: return new InfoCQ(_q as IInfoCQ);
-            case QueryType.LOAD: return new LoadCQ(_q as ILoadCQ);
             default: throw new Error("Unsupported query type.");
         }
     }

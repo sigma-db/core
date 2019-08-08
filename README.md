@@ -28,6 +28,7 @@ If instead you want to clone the repository and build sigmaJS from source by you
 * Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
 * To build the library and the accompanying client application, run `npm run build`.
+* To make the package accessible from other projects and the command line, run `npm link`.
 
 You can now use sigmaJS as described in [Installation and Use](#installation-and-use)
 
@@ -45,9 +46,10 @@ We discern three types of queries, whose syntax we outline by example:
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
 ```TypeScript
-import { Database, Query } from "sigma";
+import { Database, Engine, Query } from "sigma";
 
 const db = Database.open();     // using a temporary database
+const ng = Engine.create();     // using the default query evaluation engine
 const program = [
     // create tables
     'Employee: (id: int, name: string(32), salary: int, division: int)',
@@ -66,7 +68,7 @@ const program = [
 
 // execute program on db
 program.forEach(query => {
-    const result = query.execute(db);
+    const result = ng.evaluate(query, db);
     if (!!result) {
         console.table([...result.tuples()]);
     }

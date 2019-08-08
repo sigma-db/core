@@ -1,11 +1,8 @@
 ﻿query   "query"      = _ q:stmt _ { return q }
-stmt    "statement"  = info_stmt / load_stmt / create_stmt / insert_stmt / select_stmt
+stmt    "statement"  = info_stmt / create_stmt / insert_stmt / select_stmt
 
 /* info */
 info_stmt = r:rel_name? _ question { return { type: "info", rel: r } }
-
-/* load */
-load_stmt = exclmark _ p:lfpath { return { type: "load", fpath: p } }
 
 /* create */
 create_stmt = r:rel_name _ colon _ lbrace _ head:attr_spec tail:(_ comma _ @attr_spec)* _ rbrace { return { type: "create", rel: r, attrs: [head, ...tail] } }
@@ -47,7 +44,6 @@ lchar    "char literal"    = squote s:[^\'] squote { return BigInt(s.charCodeAt(
 lbool    "bool literal"    = ltrue / lfalse
 ltrue    "true"            = "true"i { return 1n }
 lfalse   "false"           = "false"i { return 0n }
-lfpath   "file path"       = .+ { return text() }
 
 /* types */
 type     "type"       = tint / tstring / tchar / tbool

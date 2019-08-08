@@ -1,34 +1,20 @@
-﻿import { CQQuery } from "./cq-query";
-import { IQuery } from "./index";
-import { SQLQuery } from "./sql-query";
+﻿import { CQQuery } from "./internal";
 
 export enum QueryLang { CQ, SQL }
-export enum EngineType { ALGEBRAIC, GEOMETRIC }
 
-export class Query {
+export abstract class Query {
     /**
      * Turns the string representation of a query into an internal object representation
      * @param query The query to parse
      * @param lang The language of the query. Defaults to CQ.
      */
-    public static parse(query: string, lang = QueryLang.CQ): IQuery {
+    public static parse(query: string, lang = QueryLang.CQ): Query {
         switch (lang) {
             case QueryLang.CQ: return CQQuery.parse(query);
-            case QueryLang.SQL: return SQLQuery.parse(query);
+            case QueryLang.SQL: throw new Error("SQL support is not yet implemented");
+            default: throw new Error("Unsupported query language");
         }
     }
 
-    private constructor() { }
-}
-
-export class Engine {
-    public static create(type = EngineType.ALGEBRAIC): Engine {
-        return null;
-    }
-
-    private constructor() { }
-
-    public evaluate(query: IQuery) {
-
-    }
+    protected constructor() { }
 }

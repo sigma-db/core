@@ -1,14 +1,14 @@
 import { Attribute, Box, Tuple } from "../../../database";
+import { IAtom } from "../../../query/evaluation/atom";
+import { ValueSet, Variable } from "../../../query/evaluation/variable";
 import { SkipList } from "../../../util";
-import { IAtom } from "../atom";
 import { CDS } from "../cds";
-import { ValueSet, Variable } from "../variable";
 
 class TetrisJoinImpl {
-    private kb: CDS;
-    private schema: Attribute[];
-    private variables: Variable[];
-    private wildcard: Array<bigint>;
+    private readonly kb: CDS;
+    private readonly schema: Attribute[];
+    private readonly variables: Variable[];
+    private readonly wildcard: Array<bigint>;
 
     constructor(values: ValueSet) {
         this.kb = new CDS();

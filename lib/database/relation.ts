@@ -4,6 +4,7 @@ import { Box } from "./box";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
+import { O_NOATIME } from "constants";
 
 type TSchema = Attribute[];
 
@@ -68,7 +69,7 @@ export abstract class Relation implements Iterable<Tuple> {
     protected _name: string;
     protected _schema: TSchema;
     protected _tuples: SkipList<Tuple>;
-    private _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
+    private readonly _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
 
     constructor(name: string, schema: TSchema, tuples: SkipList<Tuple>) {
         this._name = name;
@@ -235,8 +236,8 @@ type TInsertTransaction = Array<bigint>;
 class RelationLogged extends Relation {
     private static ID: number = 1;
 
-    private log: TransactionLog;
-    private id: number;
+    private readonly log: TransactionLog;
+    private readonly id: number;
 
     constructor(name: string, schema: Attribute[], tuples: SkipList<Tuple>, log: TransactionLog) {
         super(name, schema, tuples);

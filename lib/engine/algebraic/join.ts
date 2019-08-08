@@ -1,7 +1,7 @@
-import { Relation, Tuple } from "../../../database";
-import { SkipList } from "../../../util";
-import { IAtom } from "../atom";
-import { ValueSet, Variable } from "../variable";
+import { Relation, Tuple } from "../../database";
+import { IAtom } from "../../query/evaluation/atom";
+import { ValueSet, Variable } from "../../query/evaluation/variable";
+import { SkipList } from "../../util";
 
 type TPredicate = Array<[number, number]>;
 

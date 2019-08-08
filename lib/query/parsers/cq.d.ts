@@ -3,7 +3,7 @@ import { IAttributeLike } from "../../database";
 type Literal = bigint;
 type VariableName = string;
 
-declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info", LOAD = "load" }
+declare enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 declare enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 declare enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
 
@@ -42,15 +42,11 @@ interface IInsertCQ extends ICQ {
 interface ISelectCQ extends ICQ {
     name?: string;
     attrs: Array<IValueCQ<Literal | VariableName>>;
-    body: Array<IAtomCQ>
+    body: Array<IAtomCQ>;
 }
 
 interface IInfoCQ extends ICQ {
     rel?: string;
-}
-
-interface ILoadCQ extends ICQ {
-    fpath: string;
 }
 
 interface ParserOptions {

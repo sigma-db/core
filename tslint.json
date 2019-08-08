@@ -8,7 +8,13 @@
             "options": "allow-leading-underscore"
         },
         "no-bitwise": false,
-        "no-console": false
+        "no-console": false,
+        "no-var-keyword": true,
+        "prefer-object-spread": true,
+        "no-require-imports": true,
+        "prefer-readonly": true,
+        "arrow-return-shorthand": true,
+        "binary-expression-operand-order": true
     },
     "linterOptions": {
         "exclude": [

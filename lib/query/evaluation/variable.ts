@@ -1,7 +1,7 @@
 import { Attribute, DataType } from "../../database";
 
 export class Variable {
-    constructor(private _id: number, private _type: DataType, private _width: number) { }
+    constructor(private readonly _id: number, private readonly _type: DataType, private readonly _width: number) { }
 
     public get id(): number {
         return this._id;
@@ -18,7 +18,7 @@ export class Variable {
 
 export class ValueSet {
     private count: number = 0;
-    private vars: { [name: string]: Variable } = {};
+    private readonly vars: { [name: string]: Variable } = {};
 
     public variable(type: DataType, width: number, name: string = `@${this.count}`): Variable {
         this.vars[name] = this.vars[name] || new Variable(this.count++, type, width);

@@ -98,7 +98,7 @@ class DatabaseLogged extends Database {
         })),
     }));
 
-    constructor(private log: TransactionLog) {
+    constructor(private readonly log: TransactionLog) {
         super();
         log.handle<ICreateTransaction>(DatabaseLogged.CREATION_ID, DatabaseLogged.CREATION_SCHEMA, tx => {
             const { name, attrs } = tx;
