@@ -4,9 +4,21 @@ import * as yargs from "yargs";
 import { Database, Engine, EngineType, Query } from "../lib";
 
 class CLI {
+    public static start(database: Database, engine: Engine): void {
+        if (!database.isLogged) {
+            console.warn(`
+                Working in a temporary database.
+                Any data generated during this session will be lost upon closing the client!\n
+                Run the client with 'sigma --database=</path/to/database>' to make changes persistent.`,
+            );
+        }
+        const cli = new CLI(database, engine);
+        cli.repl.prompt();
+    }
+
     private readonly repl: readline.Interface;
 
-    constructor(private readonly db: Database, private readonly ng: Engine) {
+    private constructor(private readonly database: Database, private readonly engine: Engine) {
         this.repl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
@@ -16,22 +28,14 @@ class CLI {
         this.repl.on("close", () => this.onClose());
     }
 
-    public start(): void {
-        if (!this.db.isLogged) {
-            console.warn("Working in a temporary database. Any data generated during this session will be lost upon closing the client.");
-            console.warn("Run the client with 'sigma --database=</path/to/database>' to make changes persistent.");
-        }
-        this.repl.prompt();
-    }
-
     private onClose(): void {
-        this.db.close();
+        this.database.close();
     }
 
     private onLine(input: string): void {
         try {
             const query = Query.parse(input);
-            const result = this.ng.evaluate(query, this.db);
+            const result = this.engine.evaluate(query, this.database);
             if (!!result) {
                 if (!!result.name) {
                     console.log(`${result.name} (${result.size} tuples):`);
@@ -47,14 +51,22 @@ class CLI {
     }
 }
 
-const { database, engine, _ } = yargs
+const { database: db, engine: ng } = yargs
     .scriptName("sigma")
-    .option("database", { alias: "d", default: "", type: "string" })
-    .option("engine", { alias: "e", default: "geometric", type: "string" })
+    .option("database", {
+        alias: "d",
+        type: "string",
+    })
+    .option("engine", {
+        alias: "e",
+        default: "geometric",
+        choices: ["algebraic", "geometric"],
+        type: "string",
+    })
     .help()
-    .parse();
+    .argv;
 
-const ng = Engine.create(engine === "algebraic" ? EngineType.ALGEBRAIC : EngineType.GEOMETRIC);
-const db = !!database ? Database.open(database) : Database.temp();
-
-new CLI(db, ng).start();
+CLI.start(
+    !!db ? Database.open(db) : Database.temp(),
+    Engine.create(ng === "algebraic" ? EngineType.ALGEBRAIC : EngineType.GEOMETRIC),
+);

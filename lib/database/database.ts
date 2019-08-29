@@ -71,12 +71,14 @@ export abstract class Database {
     /**
      * Closes the database
      */
-    public close(): void { }
+    public abstract close(): void;
 
     protected abstract relationConstructor(name: string, schema: Attribute[]): Relation;
 }
 
 class DatabaseTemp extends Database {
+    public close() { }
+
     protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema);
     }

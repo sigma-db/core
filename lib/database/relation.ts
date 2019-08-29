@@ -4,7 +4,6 @@ import { Box } from "./box";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
-import { O_NOATIME } from "constants";
 
 type TSchema = Attribute[];
 

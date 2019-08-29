@@ -1,8 +1,8 @@
 ﻿import { Engine } from "..";
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../../database";
-import { IAtom } from "../../query/evaluation/atom";
-import { ValueSet } from "../../query/evaluation/variable";
-import { Query } from "../../query/internal";
+import { IAtom } from "../../query/atom";
+import { FreeTuple } from "../../query/variable";
+import { Query } from "../../query";
 import {
     IAtomCQ,
     ICreateCQ,
@@ -20,16 +20,6 @@ import { Projection, TetrisJoin } from "./operators";
 enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
 enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
-
-class CreateCQ extends Engine {
-    constructor(private readonly query: ICreateCQ) {
-        super();
-    }
-
-    public evaluate(db: Database): void {
-        db.createRelation(this.query.rel, this.query.attrs.map(spec => Attribute.from(spec)));
-    }
-}
 
 class InsertCQ extends Engine {
     constructor(private readonly query: IInsertCQ) {
@@ -71,8 +61,8 @@ class SelectCQ extends Engine {
         return result.freeze();
     }
 
-    private resolve(cqatoms: IAtomCQ[], schema: ISchema): [ValueSet, IAtom[]] {
-        const valset = new ValueSet();
+    private resolve(cqatoms: IAtomCQ[], schema: ISchema): [FreeTuple, IAtom[]] {
+        const valset = new FreeTuple();
         const atoms = cqatoms.map(atom => {
             if (atom.type === TupleType.UNNAMED) {
                 return {
@@ -104,43 +94,6 @@ class SelectCQ extends Engine {
             }
         });
         return [valset, atoms];
-    }
-}
-
-class InfoCQ extends Engine {
-    private static readonly DATABASE_SCHEMA = [
-        Attribute.create("Relation", DataType.STRING, 32),
-        Attribute.create("Arity", DataType.INT),
-        Attribute.create("Cardinality", DataType.INT),
-        Attribute.create("Logged", DataType.BOOL),
-        Attribute.create("Static", DataType.BOOL),
-    ];
-    private static readonly RELATION_SCHEMA = [
-        Attribute.create("Attribute", DataType.STRING, 32),
-        Attribute.create("Data Type", DataType.STRING, 8),
-        Attribute.create("Width", DataType.INT),
-    ];
-
-    constructor(private readonly query: IInfoCQ) {
-        super();
-    }
-
-    public evaluate(db: Database): Relation {
-        let result: Relation;
-        if (!this.query.rel) {
-            result = Relation.create("Database Schema", InfoCQ.DATABASE_SCHEMA);
-            Object.entries(db.schema).forEach(([, rel]) => {
-                const tuple = Tuple.create([rel.name, rel.arity, rel.size, rel.isLogged, rel.isStatic]);
-                result.insert(tuple);
-            });
-        } else {
-            result = Relation.create(`Relation Schema of "${this.query.rel}"`, InfoCQ.RELATION_SCHEMA);
-            db.relation(this.query.rel).schema.forEach(attr => {
-                const tuple = Tuple.create([attr.name, attr.type, attr.width]);
-                result.insert(tuple);
-            });
-        }
-        return result.freeze();
     }
 }
 

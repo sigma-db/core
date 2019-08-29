@@ -1,6 +1,6 @@
 import { Attribute, Box, Tuple } from "../../../database";
-import { IAtom } from "../../../query/evaluation/atom";
-import { ValueSet, Variable } from "../../../query/evaluation/variable";
+import { IAtom } from "../../../query/atom";
+import { FreeTuple, Variable } from "../../../query/variable";
 import { SkipList } from "../../../util";
 import { CDS } from "../cds";
 
@@ -10,7 +10,7 @@ class TetrisJoinImpl {
     private readonly variables: Variable[];
     private readonly wildcard: Array<bigint>;
 
-    constructor(values: ValueSet) {
+    constructor(values: FreeTuple) {
         this.kb = new CDS();
         this.schema = values.schema();
         this.variables = values.variables();
@@ -82,7 +82,7 @@ class TetrisJoinImpl {
 }
 
 export class TetrisJoin {
-    public execute(atoms: IAtom[], values: ValueSet): SkipList<Tuple> {
+    public execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
         return new TetrisJoinImpl(values).execute(atoms);
     }
 }

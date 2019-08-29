@@ -5,7 +5,6 @@
     "outDir": "dist",
     "target": "esnext",
     "sourceMap": true,
-    "declaration": true,
     "plugins": [
       {
         "name": "typescript-tslint-plugin"

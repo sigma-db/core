@@ -1,4 +1,4 @@
-import { Relation } from "../../database";
+import { Relation } from "../database";
 import { Variable } from "./variable";
 
 export interface IAtom {

@@ -1,12 +1,13 @@
 import { Relation, Tuple } from "../../database";
-import { IAtom } from "../../query/evaluation/atom";
-import { ValueSet, Variable } from "../../query/evaluation/variable";
+import { IAtom } from "../../query/atom";
+import { FreeTuple } from "../../query/free-tuple";
+import { Variable } from "../../query/variable";
 import { SkipList } from "../../util";
 
 type TPredicate = Array<[number, number]>;
 
 export class SelingerJoin {
-    public execute(atoms: IAtom[], values: ValueSet): SkipList<Tuple> {
+    public execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
         let vars = atoms[0].vars;
         let result = new SkipList<Tuple>();
         for (const tuple of atoms[0].rel) {
