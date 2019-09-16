@@ -1,7 +1,7 @@
 import { Relation, Tuple } from "../../database";
 import { IAtom } from "../../query/atom";
 import { FreeTuple } from "../../query/free-tuple";
-import { Variable } from "../../query/variable";
+import { Variable2 } from "../../query/tuple";
 import { SkipList } from "../../util";
 
 type TPredicate = Array<[number, number]>;
@@ -45,7 +45,7 @@ export class SelingerJoin {
         return result;
     }
 
-    private getPred(a: Variable[], b: Variable[]): TPredicate {
+    private getPred(a: Variable2[], b: Variable2[]): TPredicate {
         const result = [];
         for (let i = 0; i < a.length; i++) {
             const pos = b.indexOf(a[i]);

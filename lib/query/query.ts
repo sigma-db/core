@@ -1,21 +1,14 @@
-﻿import { FreeTuple } from "./free-tuple";
-import { CQQuery } from "./internal";
+﻿import { CQQuery } from "./internal";
+import { TLiteralTuple, TTuple } from "./tuple";
 
 export enum QueryLang { CQ, SQL }
 export enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
-export enum ValueType { LITERAL = "literal", VARIABLE = "variable" }
+export enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
 
-class Tuple {
-
-}
-
-class ConstTuple extends Tuple {
-
-}
-
-export class Atom<T extends Tuple> {
-    public relation: string;
-    public tuple: T;
+export interface IAttribute {
+    name: string;
+    type: DataType;
+    width: number;
 }
 
 export abstract class Query {
@@ -32,25 +25,39 @@ export abstract class Query {
         }
     }
 
-    public type: QueryType;
+    protected constructor(private readonly type: QueryType) { }
 
-    protected constructor() { }
+    public isCreateQuery(): this is CreateQuery {
+        return this.type === QueryType.CREATE;
+    }
+
+    public isInsertQuery(): this is InsertQuery {
+        return this.type === QueryType.INSERT;
+    }
+
+    public isSelectQuery(): this is SelectQuery {
+        return this.type === QueryType.SELECT;
+    }
+
+    public isInfoQuery(): this is InfoQuery {
+        return this.type === QueryType.INFO;
+    }
 }
 
 export abstract class CreateQuery extends Query {
     public rel: string;
-    public attrs: object[];
+    public attrs: IAttribute[];
 }
 
 export abstract class InsertQuery extends Query {
     public rel: string;
-    public tuple: ConstTuple;
+    public tuple: TLiteralTuple;
 }
 
 export abstract class SelectQuery extends Query {
     public name?: string;
-    public attrs: Tuple;
-    public body: Array<Atom<Tuple>>;
+    public exports: IAttribute[];
+    public body: Array<{ rel: string, tuple: TTuple }>;
 }
 
 export abstract class InfoQuery extends Query {

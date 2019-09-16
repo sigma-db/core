@@ -1,13 +1,13 @@
 import { Attribute, Box, Tuple } from "../../../database";
 import { IAtom } from "../../../query/atom";
-import { FreeTuple, Variable } from "../../../query/variable";
+import { FreeTuple, Variable2 } from "../../../query/tuple";
 import { SkipList } from "../../../util";
 import { CDS } from "../cds";
 
 class TetrisJoinImpl {
     private readonly kb: CDS;
     private readonly schema: Attribute[];
-    private readonly variables: Variable[];
+    private readonly variables: Variable2[];
     private readonly wildcard: Array<bigint>;
 
     constructor(values: FreeTuple) {
