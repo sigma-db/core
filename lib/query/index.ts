@@ -1,1 +1,2 @@
-﻿export { Query } from "./internal";
+﻿export { Query } from "./query";
+export { QueryType } from "./query-types";

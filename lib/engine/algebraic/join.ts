@@ -1,6 +1,6 @@
 import { Relation, Tuple } from "../../database";
 import { IAtom } from "../../query/atom";
-import { FreeTuple } from "../../query/free-tuple";
+import { FreeTuple } from "../free-tuple";
 import { Variable2 } from "../../query/tuple";
 import { SkipList } from "../../util";
 

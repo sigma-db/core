@@ -25,27 +25,27 @@ interface IAtomCQ extends ITupleCQ<IValueCQ<Literal | VariableName>> {
     rel: string;
 }
 
-interface ICQ {
-    type: QueryType;
-}
-
-interface ICreateCQ extends ICQ {
+interface ICreateCQ  {
+    type: QueryType.CREATE;
     rel: string;
     attrs: Array<IAttributeLike>;
 }
 
-interface IInsertCQ extends ICQ {
+interface IInsertCQ {
+    type: QueryType.INSERT;
     rel: string;
     tuple: ITupleCQ<IValueCQ<Literal>>;
 }
 
-interface ISelectCQ extends ICQ {
+interface ISelectCQ {
+    type: QueryType.SELECT;
     name?: string;
     attrs: Array<IValueCQ<Literal | VariableName>>;
     body: Array<IAtomCQ>;
 }
 
-interface IInfoCQ extends ICQ {
+interface IInfoCQ {
+    type: QueryType.INFO;
     rel?: string;
 }
 
@@ -55,4 +55,4 @@ interface ParserOptions {
     [key: string]: any;
 }
 
-export function parse(input: string, options?: ParserOptions): ICQ;
+export function parse(input: string, options?: ParserOptions): ICreateCQ | IInsertCQ | ISelectCQ | IInfoCQ;

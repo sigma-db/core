@@ -1,4 +1,4 @@
-import { Variable2 } from "./tuple";
+import { Variable2 } from "../query/tuple";
 
 export class FreeTuple {
     private count: number = 0;
