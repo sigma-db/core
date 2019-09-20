@@ -1,10 +1,10 @@
 ﻿import { Attribute, Database, ISchema, Relation } from "../../database";
 import { IAtom, ISelectQuery, IVariableValue, TupleType, ValueType } from "../../query";
-import { ISelectProcessor } from "../processor";
+import { ISelectQueryProcessor } from "../query-processor";
 import { Projection } from "./projection";
 import { TetrisJoin } from "./tetris-join";
 
-export class GeometricSelectProcessor implements ISelectProcessor {
+export class GeometricSelectProcessor implements ISelectQueryProcessor {
     public evaluate(query: ISelectQuery, db: Database): Relation {
         const [valset, atoms] = this.resolve(query.body, db.schema);
         const queryAttrs = query.exports as IVariableValue[];

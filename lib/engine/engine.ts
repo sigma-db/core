@@ -1,17 +1,22 @@
 import { Attribute, Database, DataType, Relation, Tuple } from "../database";
-import { ICreateQuery, IInfoQuery, IInsertQuery, QueryType, TLiteral, TQuery, TupleType } from "../query/query";
-import { GeometricSelectProcessor } from "./geometric/geometric-engine";
-import { ICreateProcessor, IInfoProcessor, IInsertProcessor, ISelectProcessor } from "./processor";
+import { ICreateQuery, IInfoQuery, IInsertQuery, QueryType, TLiteral, TQuery, TupleType } from "../query";
+import { GeometricSelectProcessor } from "./geometric";
+import {
+    ICreateQueryProcessor,
+    IInfoQueryProcessor,
+    IInsertQueryProcessor,
+    ISelectQueryProcessor,
+} from "./query-processor";
 
 export enum EngineType { ALGEBRAIC, GEOMETRIC }
 
-class CreateProcessor implements ICreateProcessor {
+class CreateProcessor implements ICreateQueryProcessor {
     public evaluate(query: ICreateQuery, db: Database): void {
         db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
     }
 }
 
-class InsertProcessor implements IInsertProcessor {
+class InsertProcessor implements IInsertQueryProcessor {
     public evaluate(query: IInsertQuery, db: Database): void {
         let raw: TLiteral[];
         if (query.tuple.type === TupleType.UNNAMED) {
@@ -26,7 +31,7 @@ class InsertProcessor implements IInsertProcessor {
     }
 }
 
-class InfoProcessor implements IInfoProcessor {
+class InfoProcessor implements IInfoQueryProcessor {
     private static readonly DATABASE_SCHEMA = [
         Attribute.create("Relation", DataType.STRING, 32),
         Attribute.create("Arity", DataType.INT),
@@ -68,11 +73,11 @@ export class Engine {
         }
     }
 
-    private readonly create: ICreateProcessor;
-    private readonly insert: IInsertProcessor;
-    private readonly info: IInfoProcessor;
+    private readonly create: ICreateQueryProcessor;
+    private readonly insert: IInsertQueryProcessor;
+    private readonly info: IInfoQueryProcessor;
 
-    private constructor(private readonly select: ISelectProcessor) {
+    private constructor(private readonly select: ISelectQueryProcessor) {
         this.create = new CreateProcessor();
         this.insert = new InsertProcessor();
         this.info = new InfoProcessor();
