@@ -1,13 +1,16 @@
 import { Relation, Tuple } from "../../database";
-import { IAtom } from "../../query/atom";
-import { FreeTuple } from "../free-tuple";
-import { Variable2 } from "../../query/tuple";
 import { SkipList } from "../../util";
+import { VariableManager } from "../variable-manager";
 
 type TPredicate = Array<[number, number]>;
 
+interface IAtom {
+    rel: Relation;
+    vars: string[];
+}
+
 export class SelingerJoin {
-    public execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
+    public execute(atoms: IAtom[], values: VariableManager): SkipList<Tuple> {
         let vars = atoms[0].vars;
         let result = new SkipList<Tuple>();
         for (const tuple of atoms[0].rel) {
@@ -45,7 +48,7 @@ export class SelingerJoin {
         return result;
     }
 
-    private getPred(a: Variable2[], b: Variable2[]): TPredicate {
+    private getPred(a: string[], b: string[]): TPredicate {
         const result = [];
         for (let i = 0; i < a.length; i++) {
             const pos = b.indexOf(a[i]);

@@ -1,2 +1,2 @@
-﻿export { Query } from "./query";
-export { QueryType } from "./query-types";
+﻿export * from "./query-type";
+export * from "./query";

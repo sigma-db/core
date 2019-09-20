@@ -1,10 +1,13 @@
-import { Attribute, Box, Tuple } from "../../../database";
-import { IAtom } from "../../../query/atom";
-import { FreeTuple, Variable2 } from "../../../query/tuple";
-import { SkipList } from "../../../util";
-import { CDS } from "../cds";
+import { Attribute, Box, Tuple } from "../../database";
+import { IAtom } from "../../query";
+import { SkipList } from "../../util";
+import { CDS } from "./cds";
 
-class TetrisJoinImpl {
+export class TetrisJoin {
+    public static execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
+        return new TetrisJoin(values).execute(atoms);
+    }
+
     private readonly kb: CDS;
     private readonly schema: Attribute[];
     private readonly variables: Variable2[];
@@ -78,11 +81,5 @@ class TetrisJoinImpl {
             this.kb.insert(w);
             return [true, w];
         }
-    }
-}
-
-export class TetrisJoin {
-    public execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
-        return new TetrisJoinImpl(values).execute(atoms);
     }
 }

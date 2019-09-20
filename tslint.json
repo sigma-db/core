@@ -16,10 +16,5 @@
     "prefer-readonly": true,
     "arrow-return-shorthand": true,
     "binary-expression-operand-order": true
-  },
-  "linterOptions": {
-    "exclude": [
-      "tests/**/*"
-    ]
   }
 }

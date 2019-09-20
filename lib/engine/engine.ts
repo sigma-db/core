@@ -1,26 +1,25 @@
 import { Attribute, Database, DataType, Relation, Tuple } from "../database";
-import { Query } from "../query";
-import { CreateQuery, InfoQuery, InsertQuery, QueryType, SelectQuery } from "../query/query";
-import { ICreateProcessor, IInfoProcessor, IInsertProcessor, ISelectProcessor } from "./processor";
+import { ICreateQuery, IInfoQuery, IInsertQuery, QueryType, TLiteral, TQuery, TupleType } from "../query/query";
 import { GeometricSelectProcessor } from "./geometric/geometric-engine";
+import { ICreateProcessor, IInfoProcessor, IInsertProcessor, ISelectProcessor } from "./processor";
 
 export enum EngineType { ALGEBRAIC, GEOMETRIC }
 
 class CreateProcessor implements ICreateProcessor {
-    public evaluate(query: CreateQuery, db: Database): void {
+    public evaluate(query: ICreateQuery, db: Database): void {
         db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
     }
 }
 
 class InsertProcessor implements IInsertProcessor {
-    public evaluate(query: InsertQuery, db: Database): void {
-        let raw: Literal[];
+    public evaluate(query: IInsertQuery, db: Database): void {
+        let raw: TLiteral[];
         if (query.tuple.type === TupleType.UNNAMED) {
             const tuple = query.tuple;
-            raw = tuple.vals.map(v => v.val);
+            raw = tuple.values.map(v => v.value);
         } else {
-            const { vals } = query.tuple as ITupleCQ<INamedValueCQ<Literal>>;
-            raw = db.relation(query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).val);
+            const { values: vals } = query.tuple;
+            raw = db.relation(query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).value.value);
         }
         const _tuple = Tuple.from(raw);
         db.relation(query.rel).insert(_tuple);
@@ -41,7 +40,7 @@ class InfoProcessor implements IInfoProcessor {
         Attribute.create("Width", DataType.INT),
     ];
 
-    public evaluate(query: InfoQuery, db: Database): Relation {
+    public evaluate(query: IInfoQuery, db: Database): Relation {
         let result: Relation;
         if (!query.rel) {
             result = Relation.create("Database Schema", InfoProcessor.DATABASE_SCHEMA);
@@ -63,8 +62,8 @@ class InfoProcessor implements IInfoProcessor {
 export class Engine {
     public static create(type = EngineType.GEOMETRIC): Engine {
         switch (type) {
-            case EngineType.ALGEBRAIC: return new Engine(new GeometricSelectProcessor());
-            case EngineType.GEOMETRIC: return new Engine(null);
+            case EngineType.ALGEBRAIC: return new Engine(null);
+            case EngineType.GEOMETRIC: return new Engine(new GeometricSelectProcessor());
             default: throw new Error("Unsupported engine type");
         }
     }
@@ -73,23 +72,19 @@ export class Engine {
     private readonly insert: IInsertProcessor;
     private readonly info: IInfoProcessor;
 
-    protected constructor(private readonly select: ISelectProcessor) {
+    private constructor(private readonly select: ISelectProcessor) {
         this.create = new CreateProcessor();
         this.insert = new InsertProcessor();
         this.info = new InfoProcessor();
     }
 
-    public evaluate(query: Query, db: Database): Relation | void {
+    public evaluate(query: TQuery, db: Database): Relation | void {
         switch (query.type) {
-            case QueryType.INSERT: return this.insert.evaluate(query as InsertQuery, db);
-            case QueryType.SELECT: return this.select.evaluate(query as SelectQuery, db);
-            case QueryType.CREATE: return this.create.evaluate(query as CreateQuery, db);
-            case QueryType.INFO: return this.info.evaluate(query as InfoQuery, db);
+            case QueryType.INSERT: return this.insert.evaluate(query, db);
+            case QueryType.SELECT: return this.select.evaluate(query, db);
+            case QueryType.CREATE: return this.create.evaluate(query, db);
+            case QueryType.INFO: return this.info.evaluate(query, db);
             default: throw new Error("Unsupported query type");
         }
-    }
-
-    private resolve<Q extends Query>(query: Q, db: Database): Q {
-        return null;
     }
 }

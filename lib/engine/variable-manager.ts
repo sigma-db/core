@@ -1,6 +1,6 @@
 import { Variable2 } from "../query/tuple";
 
-export class FreeTuple {
+export class VariableManager {
     private count: number = 0;
     private readonly vars: { [name: string]: Variable2 } = {};
 

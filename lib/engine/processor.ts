@@ -1,14 +1,14 @@
 import { Database, Relation } from "../database";
-import { CreateQuery, InfoQuery, InsertQuery, Query, SelectQuery } from "../query/query";
+import { ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, TQuery } from "../query/query";
 
-export interface IProcessor<Q extends Query, R = Relation | void> {
+export interface IProcessor<Q extends TQuery, R extends Relation | void> {
     evaluate(query: Q, db: Database): R;
 }
 
-export interface ICreateProcessor extends IProcessor<CreateQuery, void> { }
+export interface ICreateProcessor extends IProcessor<ICreateQuery, void> { }
 
-export interface IInsertProcessor extends IProcessor<InsertQuery, void> { }
+export interface IInsertProcessor extends IProcessor<IInsertQuery, void> { }
 
-export interface IInfoProcessor extends IProcessor<InfoQuery, Relation> { }
+export interface IInfoProcessor extends IProcessor<IInfoQuery, Relation> { }
 
-export interface ISelectProcessor extends IProcessor<SelectQuery, Relation> { }
+export interface ISelectProcessor extends IProcessor<ISelectQuery, Relation> { }
