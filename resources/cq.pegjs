@@ -1,35 +1,31 @@
 ﻿query   "query"      = _ q:stmt _ { return q }
-stmt    "statement"  = info_stmt / load_stmt / create_stmt / insert_stmt / select_stmt
+stmt    "statement"  = info_stmt / create_stmt / insert_stmt / select_stmt
 
 /* info */
 info_stmt = r:rel_name? _ question { return { type: "info", rel: r } }
 
-/* load */
-load_stmt = exclmark _ p:lfpath { return { type: "load", fpath: p } }
-
 /* create */
 create_stmt = r:rel_name _ colon _ lbrace _ head:attr_spec tail:(_ comma _ @attr_spec)* _ rbrace { return { type: "create", rel: r, attrs: [head, ...tail] } }
-attr_spec   = a:attr_name _ colon _ t:type { return { name: a, type: t.type, width: t.width } }
+attr_spec   = a:attr_name _ colon _ t:type { return { name: a, ...t } }
 
 /* insert */
 insert_stmt = r:rel_name _ lbrace _ t:tuple _ rbrace { return { type: "insert", rel: r, tuple: t } }
-tuple       = head:unnamed_val tail:(_ comma _ @unnamed_val)* { return { type: "unnamed", vals: [head, ...tail] } }
-            / head:named_val tail:(_ comma _ @named_val)* { return { type: "named", vals: [head, ...tail] } }
-unnamed_val = v:literal { return { type: "literal", val: v } }
-named_val   = a:attr_name _ equals _ v:literal { return { type: "literal", attr: a, val: v } }
+tuple       = head:unnamed_val tail:(_ comma _ @unnamed_val)* { return { type: "unnamed", values: [head, ...tail] } }
+            / head:named_val tail:(_ comma _ @named_val)* { return { type: "named", values: [head, ...tail] } }
+named_val   = a:attr_name _ equals _ v:literal { return { type: "literal", attr: a, value: v } }
+unnamed_val = v:literal { return { type: "literal", value: v } }
 
 /* select */
-select_stmt = name:rel_name? _ lbrace _ attrs:named_tuple _ rbrace _ larrow _ body:select_body { return { type: "select", name: name, attrs: attrs, body: body } }
+select_stmt = name:rel_name? _ lbrace _ attrs:named_tuple _ rbrace _ larrow _ body:select_body { return { type: "select", name: name, exports: attrs.values, body: body } }
 select_body = head:atom tail:(_ comma _ @atom)* { return [head, ...tail] }
-atom        = r:rel_name _ lbrace _ t:named_tuple _ rbrace { return { type: "named", rel: r, vals: t } }
-            / r:rel_name _ lbrace _ t:unnamed_tuple _ rbrace { return { type: "unnamed", rel: r, vals: t } }
+atom        = r:rel_name _ lbrace _ t:(@named_tuple / @unnamed_tuple) _ rbrace { return { rel: r, tuple: t } }
 
 /* free tuples */
-named_tuple    = head:named_attr_val tail:(_ comma _ @named_attr_val)* { return [head, ...tail] }
-unnamed_tuple  = head:attr_val tail:(_ comma _ @attr_val)* { return [head, ...tail] }
-named_attr_val = a:attr_name _ equals _ v:attr_val { return { type: v.type, attr: a, val: v.val } }
-attr_val       = v:literal { return { type: "literal", val: v } }
-               / v:var_name { return { type: "variable", val: v } }
+named_tuple    = head:named_attr_val tail:(_ comma _ @named_attr_val)* { return { type: "named", values: [head, ...tail] } }
+unnamed_tuple  = head:attr_val tail:(_ comma _ @attr_val)* { return { type: "unnamed", values: [head, ...tail] } }
+named_attr_val = a:attr_name _ equals _ v:attr_val { return { attr: a, value: v } }
+attr_val       = v:literal { return { type: "literal", value: v } }
+               / v:var_name { return { type: "variable", name: v } }
 
 /* identifiers */
 q_name    "query name" = id
@@ -47,7 +43,6 @@ lchar    "char literal"    = squote s:[^\'] squote { return BigInt(s.charCodeAt(
 lbool    "bool literal"    = ltrue / lfalse
 ltrue    "true"            = "true"i { return 1n }
 lfalse   "false"           = "false"i { return 0n }
-lfpath   "file path"       = .+ { return text() }
 
 /* types */
 type     "type"       = tint / tstring / tchar / tbool

@@ -2,7 +2,7 @@
 import { DyadicTrie } from "../../util";
 
 export class CDS {
-    private data: DyadicTrie<any>;
+    private readonly data: DyadicTrie<any>;
 
     constructor() {
         this.data = new DyadicTrie<any>();

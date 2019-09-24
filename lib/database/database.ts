@@ -71,12 +71,14 @@ export abstract class Database {
     /**
      * Closes the database
      */
-    public close(): void { }
+    public abstract close(): void;
 
     protected abstract relationConstructor(name: string, schema: Attribute[]): Relation;
 }
 
 class DatabaseTemp extends Database {
+    public close() { }
+
     protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema);
     }
@@ -98,7 +100,7 @@ class DatabaseLogged extends Database {
         })),
     }));
 
-    constructor(private log: TransactionLog) {
+    constructor(private readonly log: TransactionLog) {
         super();
         log.handle<ICreateTransaction>(DatabaseLogged.CREATION_ID, DatabaseLogged.CREATION_SCHEMA, tx => {
             const { name, attrs } = tx;

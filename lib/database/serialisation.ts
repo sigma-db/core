@@ -62,7 +62,6 @@ class BigIntType implements IType<bigint> {
     public encode(val: bigint, buf: Buffer, pos: number): void {
         let offset: number;
         for (offset = 4; val > 0n; offset++) {
-            // tslint:disable-next-line: no-bitwise
             buf.writeUInt8(Number(val & 0xFFn), pos + offset);
             val >>= 8n;
         }

@@ -1,23 +1,32 @@
-import { Attribute, Box, Tuple } from "../../../database";
-import { SkipList } from "../../../util";
-import { IAtom } from "../atom";
-import { CDS } from "../cds";
-import { ValueSet, Variable } from "../variable";
+import { Attribute, Box, Relation, Tuple } from "../../database";
+import { SkipList } from "../../util";
+import { TypedVariable } from "../typed-variable";
+import { VariableSet } from "../variable-set";
+import { CDS } from "./cds";
 
-class TetrisJoinImpl {
-    private kb: CDS;
-    private schema: Attribute[];
-    private variables: Variable[];
-    private wildcard: Array<bigint>;
+export interface IResolvedAtom {
+    rel: Relation;
+    vars: TypedVariable[];
+}
 
-    constructor(values: ValueSet) {
+export class TetrisJoin {
+    public static execute(atoms: IResolvedAtom[], values: VariableSet): SkipList<Tuple> {
+        return new TetrisJoin(values).execute(atoms);
+    }
+
+    private readonly kb: CDS;
+    private readonly schema: Attribute[];
+    private readonly variables: TypedVariable[];
+    private readonly wildcard: Array<bigint>;
+
+    constructor(values: VariableSet) {
         this.kb = new CDS();
         this.schema = values.schema();
         this.variables = values.variables();
         this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
-    public execute(atoms: IAtom[]): SkipList<Tuple> {
+    public execute(atoms: IResolvedAtom[]): SkipList<Tuple> {
         const all = Box.from(this.wildcard);
         const result = new SkipList<Tuple>();
 
@@ -35,7 +44,7 @@ class TetrisJoinImpl {
         return result;
     }
 
-    private gaps(atoms: IAtom[], tuple: Tuple): number {
+    private gaps(atoms: IResolvedAtom[], tuple: Tuple): number {
         let gapsCnt = 0;
         for (const { rel, vars } of atoms) {
             const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
@@ -78,11 +87,5 @@ class TetrisJoinImpl {
             this.kb.insert(w);
             return [true, w];
         }
-    }
-}
-
-export class TetrisJoin {
-    public execute(atoms: IAtom[], values: ValueSet): SkipList<Tuple> {
-        return new TetrisJoinImpl(values).execute(atoms);
     }
 }

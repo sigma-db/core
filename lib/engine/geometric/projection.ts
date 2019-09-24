@@ -1,8 +1,8 @@
-import { Tuple } from "../../../database";
-import { SkipList } from "../../../util";
+import { Tuple } from "../../database";
+import { SkipList } from "../../util";
 
 export class Projection {
-    public execute(tuples: SkipList<Tuple>, map: number[]): SkipList<Tuple> {
+    public static execute(tuples: SkipList<Tuple>, map: number[]): SkipList<Tuple> {
         const result = new SkipList<Tuple>();
         for (const tuple of tuples) {
             const _tuple = Tuple.from(map.map(p => tuple[p]));

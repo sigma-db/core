@@ -1,18 +1,24 @@
 {
-    "extends": "tslint:latest",
-    "rules": {
-        "arrow-parens": false,
-        "object-literal-sort-keys": false,
-        "max-classes-per-file": false,
-        "variable-name": {
-            "options": "allow-leading-underscore"
-        },
-        "no-bitwise": false,
-        "no-console": false
+  "extends": "tslint:latest",
+  "rules": {
+    "arrow-parens": false,
+    "object-literal-sort-keys": false,
+    "max-classes-per-file": false,
+    "variable-name": {
+      "options": "allow-leading-underscore"
     },
-    "linterOptions": {
-        "exclude": [
-            "tests/**/*"
-        ]
-    }
+    "no-bitwise": false,
+    "no-empty": false,
+    "no-console": false,
+    "no-var-keyword": true,
+    "prefer-object-spread": true,
+    "no-require-imports": true,
+    "prefer-readonly": true,
+    "arrow-return-shorthand": true,
+    "binary-expression-operand-order": true,
+    "max-line-length": [
+      true,
+      150
+    ]
+  }
 }

@@ -13,9 +13,9 @@ export class TransactionLog {
         return new TransactionLog(fd);
     }
 
-    private handlers: { [id: number]: ITransactionHandler };
+    private readonly handlers: { [id: number]: ITransactionHandler };
 
-    private constructor(private fd: number) {
+    private constructor(private readonly fd: number) {
         this.handlers = {};
     }
 
