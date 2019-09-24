@@ -15,6 +15,10 @@
     "no-require-imports": true,
     "prefer-readonly": true,
     "arrow-return-shorthand": true,
-    "binary-expression-operand-order": true
+    "binary-expression-operand-order": true,
+    "max-line-length": [
+      true,
+      150
+    ]
   }
 }

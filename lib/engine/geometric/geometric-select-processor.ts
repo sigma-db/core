@@ -1,5 +1,5 @@
 ﻿import { Attribute, Database, ISchema, Relation } from "../../database";
-import { IAtom, ISelectQuery, IVariableValue, TupleType, ValueType } from "../../query";
+import { IAtom, INamedTuple, ISelectQuery, IVariableValue, TupleType, ValueType } from "../../query";
 import { ISelectQueryProcessor } from "../query-processor";
 import { Projection } from "./projection";
 import { TetrisJoin } from "./tetris-join";
@@ -7,9 +7,9 @@ import { TetrisJoin } from "./tetris-join";
 export class GeometricSelectProcessor implements ISelectQueryProcessor {
     public evaluate(query: ISelectQuery, db: Database): Relation {
         const [valset, atoms] = this.resolve(query.body, db.schema);
-        const queryAttrs = query.exports as IVariableValue[];
+        const queryAttrs = query.exports as Array<IVariableValue>;
         const schema = queryAttrs.map(({ attr, val }) => Attribute.create(attr, valset.get(val).type, valset.get(val).width));
-        const prjSchema = queryAttrs.map(({ val }) => valset.get(val).id);
+        const prjSchema = queryAttrs.map(({ value }) => valset.get(value).id);
 
         const joined = TetrisJoin.execute(atoms, valset);
         const projected = Projection.execute(joined, prjSchema);

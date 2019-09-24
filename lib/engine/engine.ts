@@ -1,12 +1,7 @@
 import { Attribute, Database, DataType, Relation, Tuple } from "../database";
 import { ICreateQuery, IInfoQuery, IInsertQuery, QueryType, TLiteral, TQuery, TupleType } from "../query";
 import { GeometricSelectProcessor } from "./geometric";
-import {
-    ICreateQueryProcessor,
-    IInfoQueryProcessor,
-    IInsertQueryProcessor,
-    ISelectQueryProcessor,
-} from "./query-processor";
+import { ICreateQueryProcessor, IInfoQueryProcessor, IInsertQueryProcessor, ISelectQueryProcessor } from "./query-processor";
 
 export enum EngineType { ALGEBRAIC, GEOMETRIC }
 

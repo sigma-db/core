@@ -1,6 +1,6 @@
 import { Relation, Tuple } from "../../database";
 import { SkipList } from "../../util";
-import { VariableManager } from "../variable-manager";
+import { VariableSet } from "../variable-set";
 
 type TPredicate = Array<[number, number]>;
 
@@ -10,7 +10,7 @@ interface IAtom {
 }
 
 export class SelingerJoin {
-    public execute(atoms: IAtom[], values: VariableManager): SkipList<Tuple> {
+    public execute(atoms: IAtom[], values: VariableSet): SkipList<Tuple> {
         let vars = atoms[0].vars;
         let result = new SkipList<Tuple>();
         for (const tuple of atoms[0].rel) {
