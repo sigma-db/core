@@ -1,6 +1,6 @@
 {
   "name": "sigma-db",
-  "version": "0.6.15",
+  "version": "0.6.16",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "author": {
     "name": "David Luis Wiegandt",
