@@ -23,9 +23,9 @@ atom        = r:rel_name _ lbrace _ t:(@named_tuple / @unnamed_tuple) _ rbrace {
 /* free tuples */
 named_tuple    = head:named_attr_val tail:(_ comma _ @named_attr_val)* { return { type: "named", values: [head, ...tail] } }
 unnamed_tuple  = head:attr_val tail:(_ comma _ @attr_val)* { return { type: "unnamed", values: [head, ...tail] } }
-named_attr_val = a:attr_name _ equals _ v:attr_val { return { attr: a, ...v } }
+named_attr_val = a:attr_name _ equals _ v:attr_val { return { attr: a, value: v } }
 attr_val       = v:literal { return { type: "literal", value: v } }
-               / v:var_name { return { type: "variable", value: v } }
+               / v:var_name { return { type: "variable", name: v } }
 
 /* identifiers */
 q_name    "query name" = id
