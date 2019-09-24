@@ -1,26 +1,32 @@
-import { Attribute, Box, Tuple } from "../../database";
-import { IAtom } from "../../query";
+import { Attribute, Box, Relation, Tuple } from "../../database";
 import { SkipList } from "../../util";
+import { TypedVariable } from "../typed-variable";
+import { VariableSet } from "../variable-set";
 import { CDS } from "./cds";
 
+export interface IResolvedAtom {
+    rel: Relation;
+    vars: TypedVariable[];
+}
+
 export class TetrisJoin {
-    public static execute(atoms: IAtom[], values: FreeTuple): SkipList<Tuple> {
+    public static execute(atoms: IResolvedAtom[], values: VariableSet): SkipList<Tuple> {
         return new TetrisJoin(values).execute(atoms);
     }
 
     private readonly kb: CDS;
     private readonly schema: Attribute[];
-    private readonly variables: Variable2[];
+    private readonly variables: TypedVariable[];
     private readonly wildcard: Array<bigint>;
 
-    constructor(values: FreeTuple) {
+    constructor(values: VariableSet) {
         this.kb = new CDS();
         this.schema = values.schema();
         this.variables = values.variables();
         this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
-    public execute(atoms: IAtom[]): SkipList<Tuple> {
+    public execute(atoms: IResolvedAtom[]): SkipList<Tuple> {
         const all = Box.from(this.wildcard);
         const result = new SkipList<Tuple>();
 
@@ -38,7 +44,7 @@ export class TetrisJoin {
         return result;
     }
 
-    private gaps(atoms: IAtom[], tuple: Tuple): number {
+    private gaps(atoms: IResolvedAtom[], tuple: Tuple): number {
         let gapsCnt = 0;
         for (const { rel, vars } of atoms) {
             const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
