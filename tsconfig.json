@@ -11,9 +11,6 @@
       }
     ]
   },
-  "exclude": [
-    "node_modules"
-  ],
   "include": [
     "lib/**/*",
     "bin/**/*"

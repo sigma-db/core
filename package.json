@@ -11,17 +11,18 @@
     "node": ">=11.0.0"
   },
   "devDependencies": {
-    "@types/node": "^11.9.4",
-    "@types/yargs": "^12.0.9",
+    "@types/node": "^12.7.5",
+    "@types/yargs": "^13.0.2",
     "pegjs": "^0.11.0-dev.325",
-    "typescript": "^3.5.3",
+    "typescript": "^3.6.3",
     "typescript-tslint-plugin": "^0.5.4"
   },
   "scripts": {
-    "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc"
+    "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
+    "prepublish": "npm run build"
   },
   "dependencies": {
-    "yargs": "^13.2.1"
+    "yargs": "^14.0.0"
   },
   "bin": {
     "sigma": "./dist/bin/cli.js"
