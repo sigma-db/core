@@ -1,4 +1,5 @@
 .vscode/
+assets/
 dist/
 node_modules/
 
