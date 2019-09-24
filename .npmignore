@@ -4,3 +4,4 @@ dist/
 node_modules/
 
 lib/query/parsers/*.js
+azure-pipelines.yml
