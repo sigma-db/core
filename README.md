@@ -1,40 +1,37 @@
-﻿![logo](https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png)
+﻿# ![logo](https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png)
 
-*sigmaJS* is a relational database engine that aims to incorporate some of the latest findings in database theory.
+[![NPM](https://badge.fury.io/js/sigma-db.svg)](https://www.npmjs.com/package/@sigma-db/core)
+
+*sigmaDB* is a relational database engine that aims to incorporate some of the latest findings in database theory.
 While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.
 One such approach is the *Tetris* join algorithm introduced in [Joins via Geometric Resolutions: Worst Case and Beyond](http://doi.org/10.1145/2967101) by *Khamis et al*, which we implement to evaluate joins.
 
-We developed sigmaJS in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
+We developed sigmaDB in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
 
 ## Prerequisites
 
-* In order to run sigmaJS, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
+In order to run sigmaDB, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
 
-## Installation and Use
+## Build and Installation
 
-[![NPM](https://nodei.co/npm/sigma-db.png?compact=true)](https://nodei.co/npm/sigma-db/)
+To install the package from [npm](https://www.npmjs.com/), run `npm install -g sigma-db`.
+Thereafter, you can run sigmaDB from the command line with `sigma --database=</path/to/database>`.
 
-To install the package from [npm](https://www.npmjs.com/), simply run `npm i -g sigma-db`.
-Thereafter, you can run sigmaJS in one of two ways:
+### Custom Build
 
-* In *CLI* mode, you can directly modify the database from the command line. To execute sigmaJS in *CLI* mode, run `sigma-db cli </path/to/database>`.
-* In *server* mode, the database's data is exposed via a TCP port to be remotely accessed. Run `sigma-db serve </path/to/database> --port=4711` to execute sigmaJS in *server* mode.
-
-## Custom Build
-
-If instead you want to clone the repository and build sigmaJS from source by yourself, follow these steps:
+If instead you want to clone the repository and build sigmaDB from source by yourself, follow these steps:
 
 * Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
 * To build the library and the accompanying client application, run `npm run build`.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
-You can now use sigmaJS as described in [Installation and Use](#installation-and-use)
+You can now use sigmaDB as described in [Installation and Use](#build-and-installation)
 
 ## Query Language
 
-We discern three types of queries, whose syntax we outline by example:
+We discern four types of queries, whose syntax we outline by example:
 
 1. To **create** a new relation *Employee* with attributes *id*, *name*, *salary* and *boss* of types `int`, `string`, `int` and `int`, respectively, write `Employee: (id: int, name: string, salary: int, boss: int)`. Supported data types are `int`, `string`, `char` and `bool`.
 2. To **insert** a tuple into the (existing) relation *Employee*, write `Employee(id=1, name="Sam", salary=4200, boss=0)`. Alternatively, the less verbose syntax `Employee(1, "Sam", 4200, 0)` can be used. Please note that in the latter case, the order of the attributes matters, while it does not in the former.

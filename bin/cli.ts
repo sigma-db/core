@@ -6,11 +6,9 @@ import { Database, Engine, EngineType, Query } from "../lib";
 class CLI {
     public static start(database: Database, engine: Engine): void {
         if (!database.isLogged) {
-            console.warn(`
-                Working in a temporary database.
-                Any data generated during this session will be lost upon closing the client!\n
-                Run the client with 'sigma --database=</path/to/database>' to make changes persistent.`,
-            );
+            console.warn("Working in a temporary database.");
+            console.warn("Any data generated during this session will be lost upon closing the client!\n");
+            console.warn("Run the client with 'sigma --database=</path/to/database>' to make changes persistent.");
         }
         const cli = new CLI(database, engine);
         cli.repl.prompt();

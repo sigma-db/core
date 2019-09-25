@@ -1,5 +1,5 @@
 {
-  "name": "sigma-db",
+  "name": "@sigma-db/core",
   "version": "0.7.1",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "author": {
