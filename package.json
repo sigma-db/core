@@ -13,13 +13,18 @@
   "devDependencies": {
     "@types/node": "^12.7.5",
     "@types/yargs": "^13.0.2",
+    "@typescript-eslint/eslint-plugin": "^2.3.1",
+    "@typescript-eslint/parser": "^2.3.1",
+    "eslint": "^6.4.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsdoc": "^15.9.3",
+    "eslint-plugin-no-null": "^1.0.2",
     "pegjs": "^0.11.0-dev.325",
-    "typescript": "^3.6.3",
-    "typescript-tslint-plugin": "^0.5.4"
+    "typescript": "^3.6.3"
   },
   "scripts": {
     "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "yargs": "^14.0.0"
@@ -27,5 +32,6 @@
   "bin": {
     "sigma": "./dist/bin/cli.js"
   },
-  "main": "./dist/lib/index.js"
+  "main": "./dist/lib/index.js",
+  "types": "./types/lib/index.d.ts"
 }

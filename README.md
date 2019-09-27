@@ -1,4 +1,4 @@
-﻿# ![logo](https://raw.githubusercontent.com/dlw93/sigmaJS/master/assets/sigmaDB.png)
+﻿# ![logo](https://raw.githubusercontent.com/dlw93/sigmaDB/master/assets/sigmaDB.png)
 
 [![NPM](https://badge.fury.io/js/sigma-db.svg)](https://www.npmjs.com/package/@sigma-db/core)
 
@@ -9,11 +9,13 @@ One such approach is the *Tetris* join algorithm introduced in [Joins via Geomet
 We developed sigmaDB in a manner that facilitates easy modification of almost any aspect of the database engine, be it query parsing, transaction logging or join evaluation.
 Still, please keep in mind that this is a *research project* and as such lacks many features of a full-fledged RDBMS (cf. [Limitations](#limitations)).
 
-## Prerequisites
+## Build and Installation
+
+### Prerequisites
 
 In order to run sigmaDB, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
 
-## Build and Installation
+### Installation
 
 To install the package from [npm](https://www.npmjs.com/), run `npm install -g sigma-db`.
 Thereafter, you can run sigmaDB from the command line with `sigma --database=</path/to/database>`.
@@ -22,12 +24,12 @@ Thereafter, you can run sigmaDB from the command line with `sigma --database=</p
 
 If instead you want to clone the repository and build sigmaDB from source by yourself, follow these steps:
 
-* Clone the project with `git clone https://github.com/dlw93/sigmaJS`.
+* Clone the project with `git clone https://github.com/dlw93/sigmaDB`.
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
 * To build the library and the accompanying client application, run `npm run build`.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
-You can now use sigmaDB as described in [Installation and Use](#build-and-installation)
+You can now use sigmaDB as described in [Installation](#installation)
 
 ## Query Language
 

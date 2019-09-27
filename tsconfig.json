@@ -4,12 +4,9 @@
     "module": "commonjs",
     "outDir": "dist",
     "target": "esnext",
-    "sourceMap": true,
-    "plugins": [
-      {
-        "name": "typescript-tslint-plugin"
-      }
-    ]
+    "sourceMap": true
+    // "declaration": true,
+    // "declarationDir": "types",
   },
   "include": [
     "lib/**/*",

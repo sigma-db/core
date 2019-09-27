@@ -6,10 +6,10 @@ lib/
 node_modules/
 resources/
 
+.eslintrc.json
 .gitattributes
 .gitignore
 .npmignore
 azure-pipelines.yml
 package-lock.json
 tsconfig.json
-tslint.json

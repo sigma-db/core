@@ -1,1 +1,1 @@
-export { GeometricSelectProcessor } from "./geometric-select-processor";
+export { IResolvedAtom, TetrisJoin } from "./tetris-join";
