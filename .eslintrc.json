@@ -36,7 +36,12 @@
             "warn",
             "interface"
         ],
-        "@typescript-eslint/interface-name-prefix": "warn",
+        "@typescript-eslint/interface-name-prefix": [
+            "warn",
+            {
+                "prefixWithI": "always"
+            }
+        ],
         "@typescript-eslint/array-type": [
             "warn",
             {

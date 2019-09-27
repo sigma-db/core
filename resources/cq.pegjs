@@ -12,7 +12,7 @@ attr_spec   = a:attr_name _ colon _ t:type { return { name: a, ...t } }
 insert_stmt = r:rel_name _ lbrace _ t:tuple _ rbrace { return { type: "insert", rel: r, tuple: t } }
 tuple       = head:unnamed_val tail:(_ comma _ @unnamed_val)* { return { type: "unnamed", values: [head, ...tail] } }
             / head:named_val tail:(_ comma _ @named_val)* { return { type: "named", values: [head, ...tail] } }
-named_val   = a:attr_name _ equals _ v:literal { return { type: "literal", attr: a, value: v } }
+named_val   = a:attr_name _ equals _ v:literal { return { attr: a, value: { type: "literal", value: v } } }
 unnamed_val = v:literal { return { type: "literal", value: v } }
 
 /* select */

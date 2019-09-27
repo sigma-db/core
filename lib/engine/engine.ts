@@ -85,8 +85,8 @@ export abstract class Engine {
             const tuple = query.tuple;
             raw = tuple.values.map(v => v.value);
         } else {
-            const { values: vals } = query.tuple;
-            raw = db.relation(query.rel).schema.map(attr => vals.find(val => val.attr === attr.name).value.value);
+            const { values } = query.tuple;
+            raw = db.relation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
         }
         const _tuple = Tuple.from(raw);
         db.relation(query.rel).insert(_tuple);
