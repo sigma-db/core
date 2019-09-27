@@ -3,4 +3,5 @@ dist/
 node_modules/
 types/
 
+!.vscode/settings.json
 lib/query/parsers/*.js

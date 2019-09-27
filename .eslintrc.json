@@ -1,7 +1,6 @@
 {
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "warnOnUnsupportedTypeScriptVersion": false,
         "ecmaVersion": 2018,
         "sourceType": "module",
         "project": "./tsconfig.json"
@@ -12,179 +11,48 @@
         "es6": true
     },
     "plugins": [
-        "@typescript-eslint",
-        "jsdoc",
-        "no-null",
-        "import"
+        "@typescript-eslint"
     ],
     "rules": {
-        "@typescript-eslint/adjacent-overload-signatures": "error",
-        "@typescript-eslint/array-type": "error",
-        "camelcase": "off",
-        "@typescript-eslint/camelcase": [
-            "error",
+        "quotes": "off",
+        "prefer-object-spread": "warn",
+        "max-len": [
+            "warn",
             {
-                "properties": "never",
-                "allow": [
-                    "^[A-Za-z][a-zA-Za-z]+_[A-Za-z]+$"
-                ]
+                "code": 150
             }
         ],
-        "@typescript-eslint/class-name-casing": "error",
+        "arrow-parens": "off",
+        "no-var": "error",
+        "yoda": "warn",
+        "arrow-body-style": [
+            "warn",
+            "as-needed"
+        ],
+        "@typescript-eslint/prefer-readonly": "warn",
+        "@typescript-eslint/no-inferrable-types": "warn",
+        "@typescript-eslint/no-misused-new": "warn",
         "@typescript-eslint/consistent-type-definitions": [
-            "error",
+            "warn",
             "interface"
         ],
-        "@typescript-eslint/interface-name-prefix": "error",
-        "@typescript-eslint/no-inferrable-types": "error",
-        "@typescript-eslint/no-misused-new": "error",
-        "@typescript-eslint/no-this-alias": "error",
-        "@typescript-eslint/prefer-for-of": "error",
-        "@typescript-eslint/prefer-function-type": "error",
-        "@typescript-eslint/prefer-namespace-keyword": "error",
-        "quotes": "off",
+        "@typescript-eslint/interface-name-prefix": "warn",
+        "@typescript-eslint/array-type": [
+            "warn",
+            {
+                "default": "array-simple"
+            }
+        ],
+        "@typescript-eslint/class-name-casing": "warn",
+        "@typescript-eslint/prefer-for-of": "warn",
+        "@typescript-eslint/no-require-imports": "error",
+        "@typescript-eslint/triple-slash-reference": "error",
         "@typescript-eslint/quotes": [
-            "error",
+            "warn",
             "double",
             {
-                "avoidEscape": true,
                 "allowTemplateLiterals": true
             }
-        ],
-        "semi": "off",
-        "@typescript-eslint/semi": "error",
-        "@typescript-eslint/triple-slash-reference": "error",
-        "@typescript-eslint/type-annotation-spacing": "error",
-        "@typescript-eslint/unified-signatures": "error",
-        // scripts/eslint/rules
-        "object-literal-surrounding-space": "error",
-        "no-type-assertion-whitespace": "error",
-        "type-operator-spacing": "error",
-        "only-arrow-functions": [
-            "error",
-            {
-                "allowNamedFunctions": true,
-                "allowDeclarations": true
-            }
-        ],
-        "no-double-space": "error",
-        "boolean-trivia": "error",
-        "no-in-operator": "error",
-        "simple-indent": "error",
-        "debug-assert": "error",
-        "no-keywords": "error",
-        // eslint-plugin-import
-        "import/no-extraneous-dependencies": [
-            "error",
-            {
-                "optionalDependencies": false
-            }
-        ],
-        // eslint-plugin-no-null
-        "no-null/no-null": "error",
-        // eslint-plugin-jsdoc
-        "jsdoc/check-alignment": "error",
-        // eslint
-        "brace-style": [
-            "error",
-            "stroustrup",
-            {
-                "allowSingleLine": true
-            }
-        ],
-        "constructor-super": "error",
-        "curly": [
-            "error",
-            "multi-line"
-        ],
-        "dot-notation": "error",
-        "eqeqeq": "error",
-        "linebreak-style": [
-            "error",
-            "windows"
-        ],
-        "new-parens": "error",
-        "no-caller": "error",
-        "no-duplicate-case": "error",
-        "no-duplicate-imports": "error",
-        "no-empty": "error",
-        "no-eval": "error",
-        "no-extra-bind": "error",
-        "no-fallthrough": "error",
-        "no-new-func": "error",
-        "no-new-wrappers": "error",
-        "no-return-await": "error",
-        "no-restricted-globals": [
-            "error",
-            {
-                "name": "setTimeout"
-            },
-            {
-                "name": "clearTimeout"
-            },
-            {
-                "name": "setInterval"
-            },
-            {
-                "name": "clearInterval"
-            },
-            {
-                "name": "setImmediate"
-            },
-            {
-                "name": "clearImmediate"
-            }
-        ],
-        "no-sparse-arrays": "error",
-        "no-template-curly-in-string": "error",
-        "no-throw-literal": "error",
-        "no-trailing-spaces": "error",
-        "no-undef-init": "error",
-        "no-unsafe-finally": "error",
-        "no-unused-expressions": [
-            "error",
-            {
-                "allowTernary": true
-            }
-        ],
-        "no-unused-labels": "error",
-        "no-var": "error",
-        "object-shorthand": "error",
-        "prefer-const": "error",
-        "prefer-object-spread": "error",
-        "quote-props": [
-            "error",
-            "consistent-as-needed"
-        ],
-        "space-in-parens": "error",
-        "unicode-bom": [
-            "error",
-            "never"
-        ],
-        "use-isnan": "error"
+        ]
     }
 }
-// {
-//     "extends": "tslint:latest",
-//     "rules": {
-//         "arrow-parens": false,
-//         "object-literal-sort-keys": false,
-//         "max-classes-per-file": false,
-//         "variable-name": {
-//             "options": "allow-leading-underscore"
-//         },
-//         "no-bitwise": false,
-//         "no-empty": false,
-//         "no-console": false,
-//         "no-var-keyword": true,
-//         "prefer-object-spread": true,
-//         "no-require-imports": true,
-//         "prefer-readonly": true,
-//         "arrow-return-shorthand": true,
-//         "binary-expression-operand-order": true,
-//         "max-line-length": [
-//             true,
-//             150
-//         ]
-//     }
-// }
