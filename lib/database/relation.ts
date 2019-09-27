@@ -13,7 +13,7 @@ interface IOptions {
 }
 
 class DuplicateTupleError extends Error {
-    constructor(private _rel: string, private _tuple: Tuple, private _schema: Attribute[]) {
+    constructor(private readonly _rel: string, private readonly _tuple: Tuple, private readonly _schema: Attribute[]) {
         super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
     }
 
@@ -23,6 +23,22 @@ class DuplicateTupleError extends Error {
 
     public get tuple(): string {
         return this._tuple.toString(this._schema);
+    }
+}
+
+class ValueOutOfLimitsError extends Error {
+    constructor(_rel: string, _tuple: Tuple, _schema: Attribute[], _pos: number) {
+        const value = _schema[_pos].valueOf(_tuple[_pos]);
+        const tupleStr = _tuple.toString(_schema);
+        const attrName = _schema[_pos].name;
+        
+        if (typeof value === "string") {
+            const width = _schema[_pos].width;
+            super(`Value ${value} in ${_rel}${tupleStr} exceeds maximum string length for attribute "${attrName}" (maximum is ${width}).`);
+        } else {
+            const max = _schema[_pos].max;
+            super(`Value ${value} in ${_rel}${tupleStr} exceeds value limit for attribute "${attrName}" (maximum is ${max}).`);
+        }
     }
 }
 
@@ -129,13 +145,18 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param tuple The tuple to insert
      */
     public insert(tuple: Tuple) {
-        try {
-            this._tuples.insert(tuple);
-        } catch (e) {
-            if (e instanceof DuplicateKeyError) {
-                throw new DuplicateTupleError(this.name, e.key, this._schema);
-            } else {
-                throw e;
+        const limitErrPos = tuple.findIndex((v, i) => v > this._schema[i].max); // check whether all values fit their respective attribute's maximum value
+        if (limitErrPos >= 0) {
+            throw new ValueOutOfLimitsError(this.name, tuple, this._schema, limitErrPos);
+        } else {
+            try {
+                this._tuples.insert(tuple);
+            } catch (e) {
+                if (e instanceof DuplicateKeyError) {
+                    throw new DuplicateTupleError(this.name, e.key, this._schema);
+                } else {
+                    throw e;
+                }
             }
         }
     }
@@ -233,7 +254,7 @@ class RelationStatic extends Relation {
 type TInsertTransaction = Array<bigint>;
 
 class RelationLogged extends Relation {
-    private static ID: number = 1;
+    private static ID = 1;
 
     private readonly log: TransactionLog;
     private readonly id: number;

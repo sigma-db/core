@@ -14,12 +14,16 @@
         "@typescript-eslint"
     ],
     "rules": {
+        // ESLint
         "quotes": "off",
         "prefer-object-spread": "warn",
         "max-len": [
             "warn",
             {
-                "code": 150
+                "code": 150,
+                "ignoreComments": true,
+                "ignoreTemplateLiterals": true,
+                "ignoreStrings": true
             }
         ],
         "arrow-parens": "off",
@@ -29,6 +33,7 @@
             "warn",
             "as-needed"
         ],
+        // TypeScript Plugin
         "@typescript-eslint/prefer-readonly": "warn",
         "@typescript-eslint/no-inferrable-types": "warn",
         "@typescript-eslint/no-misused-new": "warn",
