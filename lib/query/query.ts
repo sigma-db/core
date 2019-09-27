@@ -1,7 +1,7 @@
 ﻿import { parse as parseCQ } from "./parsers/cq";
 import { TQuery } from "./query-type";
 
-export enum QueryLang { CQ, SQL }
+export const enum QueryLang { CQ, SQL }
 
 export class Query {
     /**

@@ -1,8 +1,8 @@
 import { IAttributeLike } from "../database";
 
-export enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
-export enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
-export enum ValueType { VARIABLE = "variable", LITERAL = "literal" }
+export const enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
+export const enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
+export const enum ValueType { VARIABLE = "variable", LITERAL = "literal" }
 
 export type TLiteral = bigint;
 export type TVariableName = string;

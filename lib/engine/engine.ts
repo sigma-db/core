@@ -4,7 +4,7 @@ import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
 
-export enum EngineType { ALGEBRAIC, GEOMETRIC }
+export const enum EngineType { ALGEBRAIC, GEOMETRIC }
 
 export abstract class Engine {
     public static create(type = EngineType.GEOMETRIC): Engine {
@@ -15,6 +15,9 @@ export abstract class Engine {
         }
     }
 
+    /**
+     * The schema of the relation generated when asked for the database schema
+     */
     private static readonly DATABASE_SCHEMA = [
         Attribute.create("Relation", DataType.STRING, 32),
         Attribute.create("Arity", DataType.INT),
@@ -23,12 +26,21 @@ export abstract class Engine {
         Attribute.create("Static", DataType.BOOL),
     ];
 
+    /**
+     * The schema of the relation generated when asked for a specifiec relation's schema
+     */
     private static readonly RELATION_SCHEMA = [
         Attribute.create("Attribute", DataType.STRING, 32),
         Attribute.create("Data Type", DataType.STRING, 8),
         Attribute.create("Width", DataType.INT),
     ];
 
+    /**
+     * Given a query's AST and a database, evaluates the query on the database
+     * and, depending on the query, returns a resulting relation or nothing.
+     * @param query The query to evaluate
+     * @param db The database to evaluate the query on
+     */
     public evaluate(query: TQuery, db: Database): Relation | void {
         switch (query.type) {
             case QueryType.INSERT: return this.onInsert(query, db);
@@ -101,6 +113,7 @@ export abstract class Engine {
                 result.insert(tuple);
             });
         } else {
+            // TODO: Fix ordering by introducing a new unordered relation type (or make it generic)
             result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA);
             db.relation(query.rel).schema.forEach(attr => {
                 const tuple = Tuple.create([attr.name, attr.type, attr.width]);
