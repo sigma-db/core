@@ -24,9 +24,7 @@
     "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
     "prepare": "npm run build"
   },
-  "dependencies": {
-    "yargs": "^14.0.0"
-  },
+  "dependencies": {},
   "bin": {
     "sigma": "./dist/bin/cli.js"
   },

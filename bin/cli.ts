@@ -1,6 +1,5 @@
 ﻿#!/usr/bin/env node
 import * as readline from "readline";
-import * as yargs from "yargs";
 import { Database, Engine, EngineType, Query } from "../lib";
 
 class CLI {
@@ -49,22 +48,26 @@ class CLI {
     }
 }
 
-const { database: db, engine: ng } = yargs
-    .scriptName("sigma")
-    .option("database", {
-        alias: "d",
-        type: "string",
-    })
-    .option("engine", {
-        alias: "e",
-        default: "geometric",
-        choices: ["algebraic", "geometric"],
-        type: "string",
-    })
-    .help()
-    .argv;
+interface IOptions {
+    db: Database;
+    ng: Engine;
+}
+
+const { db, ng } = process.argv.slice(2).map(v => v.split('=')).reduce<Partial<IOptions>>((result, [key, value]) => {
+    switch (key) {
+        case "database":
+        case "d":
+            result["db"] = Database.open(value);
+            break;
+        case "engine":
+        case "e":
+            result["ng"] = Engine.create(value === "geometric" ? EngineType.GEOMETRIC : EngineType.ALGEBRAIC);
+            break;
+    }
+    return result;
+}, {});
 
 CLI.start(
-    !!db ? Database.open(db) : Database.temp(),
-    Engine.create(ng === "algebraic" ? EngineType.ALGEBRAIC : EngineType.GEOMETRIC),
+    db || Database.temp(),
+    ng || Engine.create()
 );
