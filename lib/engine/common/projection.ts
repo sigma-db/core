@@ -1,5 +1,5 @@
 import { Tuple } from "../../database";
-import { SkipList } from "../../util";
+import { SkipList } from "../../util/list";
 
 export class Projection {
     public static execute(tuples: SkipList<Tuple>, map: number[]): SkipList<Tuple> {

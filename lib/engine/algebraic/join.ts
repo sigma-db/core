@@ -1,5 +1,5 @@
 import { Relation, Tuple } from "../../database";
-import { SkipList } from "../../util";
+import { SkipList } from "../../util/list";
 import { VariableSet } from "../variable-set";
 
 type TPredicate = Array<[number, number]>;

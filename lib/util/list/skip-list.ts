@@ -1,4 +1,4 @@
-﻿import { IComparable } from "./comparable";
+﻿import { IComparable, IList, ListType } from "./list";
 
 class Node<T extends IComparable<T>> {
     public key: T;
@@ -11,7 +11,7 @@ class Node<T extends IComparable<T>> {
 }
 
 export class DuplicateKeyError<T> extends Error {
-    constructor(private _key: T) {
+    constructor(private readonly _key: T) {
         super();
     }
 
@@ -20,13 +20,13 @@ export class DuplicateKeyError<T> extends Error {
     }
 }
 
-export class SkipList<T extends IComparable<T>> {
-    private head: Node<T>;
-    private tail: Node<T>;
+export class SkipList<T extends IComparable<T>> implements IList<T, ListType.SORTED> {
+    private readonly head: Node<T>;
+    private readonly tail: Node<T>;
     private level: number;
     private _size: number;
 
-    constructor(private depth = 4, private p = 1 / depth, private throwsOnDuplicate = false) {
+    constructor(private readonly depth = 4, private readonly p = 1 / depth, private readonly throwsOnDuplicate = false) {
         this.head = new Node<T>(null, depth);
         this.tail = new Node<T>(null, 0);
         this.level = 0;
@@ -35,9 +35,6 @@ export class SkipList<T extends IComparable<T>> {
         this.head.next.fill(this.tail);
     }
 
-    /**
-     * The number of entries in the list
-     */
     public get size(): number {
         return this._size;
     }
@@ -84,6 +81,10 @@ export class SkipList<T extends IComparable<T>> {
         } else if (this.throwsOnDuplicate) {
             throw new DuplicateKeyError(key);
         }
+    }
+
+    public sort(_comparator: ((a: T, b: T) => number)): SkipList<T> {
+        return this;
     }
 
     public *[Symbol.iterator](): IterableIterator<T> {

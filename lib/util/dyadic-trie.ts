@@ -11,7 +11,7 @@ class TrieNode<T> {
 }
 
 export class DyadicTrie<T> {
-    private root: TrieNode<T>;
+    private readonly root: TrieNode<T>;
 
     constructor() {
         this.root = new TrieNode<T>();

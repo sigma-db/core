@@ -7,6 +7,11 @@ import { Projection } from "./common";
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
 
 export abstract class Engine {
+    /**
+     * Creates a new instance of an engine that can be subsequently used to
+     * evaluate queries against a database.
+     * @param type The type of engine to instantiate. Defaults to `GEOMETRIC`.
+     */
     public static create(type = EngineType.GEOMETRIC): Engine {
         switch (type) {
             case EngineType.ALGEBRAIC: return null;
@@ -113,8 +118,7 @@ export abstract class Engine {
                 result.insert(tuple);
             });
         } else {
-            // TODO: Fix ordering by introducing a new unordered relation type (or make it generic)
-            result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA);
+            result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             db.relation(query.rel).schema.forEach(attr => {
                 const tuple = Tuple.create([attr.name, attr.type, attr.width]);
                 result.insert(tuple);

@@ -1,4 +1,4 @@
-import { IComparable } from "../util";
+import { IComparable } from "../util/list";
 import { Attribute } from "./attribute";
 
 export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<Tuple> {

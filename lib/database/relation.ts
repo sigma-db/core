@@ -1,15 +1,18 @@
-﻿import { DuplicateKeyError, Dyadic, SkipList } from "../util";
+﻿import { Dyadic } from "../util/dyadic";
+import { DuplicateKeyError, TList, SkipList, IList, ListType, ArrayList } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
+import { AssertionError } from "assert";
 
 type TSchema = Attribute[];
 
 interface IOptions {
     throwsOnDuplicate: boolean;
     log: TransactionLog;
+    sorted: boolean;
 }
 
 class DuplicateTupleError extends Error {
@@ -31,12 +34,11 @@ class ValueOutOfLimitsError extends Error {
         const value = _schema[_pos].valueOf(_tuple[_pos]);
         const tupleStr = _tuple.toString(_schema);
         const attrName = _schema[_pos].name;
-        
+        const { max, width } = _schema[_pos]
+
         if (typeof value === "string") {
-            const width = _schema[_pos].width;
             super(`Value ${value} in ${_rel}${tupleStr} exceeds maximum string length for attribute "${attrName}" (maximum is ${width}).`);
         } else {
-            const max = _schema[_pos].max;
             super(`Value ${value} in ${_rel}${tupleStr} exceeds value limit for attribute "${attrName}" (maximum is ${max}).`);
         }
     }
@@ -50,8 +52,8 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param options Options specifying the behaviour of the relation
      */
     public static create(name: string, schema: TSchema, options = Relation.defaultOptions): Relation {
-        const { throwsOnDuplicate, log } = { ...Relation.defaultOptions, ...options };
-        const tuples = new SkipList<Tuple>(4, 0.25, throwsOnDuplicate);
+        const { throwsOnDuplicate, log, sorted } = { ...Relation.defaultOptions, ...options };
+        const tuples = sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>();
 
         if (!!log) {
             return new RelationLogged(name, schema, tuples, log);
@@ -67,7 +69,7 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param tuples The existing set of tuples to create the relation from
      * @param options Options specifying the behaviour of the relation
      */
-    public static from(name: string, schema: TSchema, tuples: SkipList<Tuple>, options = Relation.defaultOptions): Relation {
+    public static from(name: string, schema: TSchema, tuples: TList<Tuple>, options = Relation.defaultOptions): Relation {
         const rel = Relation.create(name, schema, options);
         rel._tuples = tuples;
         return rel;
@@ -79,14 +81,15 @@ export abstract class Relation implements Iterable<Tuple> {
     private static readonly defaultOptions: Partial<IOptions> = {
         throwsOnDuplicate: true,
         log: undefined,
+        sorted: true,
     };
 
     protected _name: string;
     protected _schema: TSchema;
-    protected _tuples: SkipList<Tuple>;
+    protected _tuples: TList<Tuple>;
     private readonly _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
 
-    constructor(name: string, schema: TSchema, tuples: SkipList<Tuple>) {
+    constructor(name: string, schema: TSchema, tuples: TList<Tuple>) {
         this._name = name;
         this._schema = schema;
         this._tuples = tuples;
@@ -174,6 +177,8 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param tuple The tuple to probe
      */
     public gaps(tuple: Tuple): Box[] {
+        this.assertSorted(this._tuples);
+
         const gaps: Box[] = [];
         const [min, max, exp, wildcard] = this._boundaries;
         const [pred, succ] = this._tuples.find(tuple);
@@ -240,6 +245,12 @@ export abstract class Relation implements Iterable<Tuple> {
         const back = wildcard.slice(dim + 1);
         return Dyadic.get(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
     }
+
+    private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {
+        if (!(list instanceof SkipList)) {
+            throw new AssertionError({ message: "Gaps can only be retrieved from ordered relations, but the relation is not ordered." });
+        }
+    }
 }
 
 class RelationTemp extends Relation {
@@ -259,7 +270,7 @@ class RelationLogged extends Relation {
     private readonly log: TransactionLog;
     private readonly id: number;
 
-    constructor(name: string, schema: Attribute[], tuples: SkipList<Tuple>, log: TransactionLog) {
+    constructor(name: string, schema: Attribute[], tuples: TList<Tuple>, log: TransactionLog) {
         super(name, schema, tuples);
         const tupleSchema = schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
