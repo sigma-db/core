@@ -219,7 +219,7 @@ class ObjectType implements IType<object> {
     }
 }
 
-export const Type = Object.freeze({
+export const Type = {
     INT8: new IntType(1),
     INT16: new IntType(2),
     INT32: new IntType(4),
@@ -231,7 +231,7 @@ export const Type = Object.freeze({
     ARRAY: (type: IType<TType>) => new ArrayType(type),
     TUPLE: (types: Array<IType<TType>>) => new TupleType(types),
     OBJECT: (schema: ISchema) => new ObjectType(schema),
-});
+} as const;
 
 export class ObjectSchema {
     /**

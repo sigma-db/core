@@ -82,7 +82,7 @@ export abstract class Relation implements Iterable<Tuple> {
         throwsOnDuplicate: true,
         log: undefined,
         sorted: true,
-    };
+    } as const;
 
     protected _name: string;
     protected _schema: TSchema;

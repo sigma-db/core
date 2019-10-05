@@ -48,26 +48,34 @@ class CLI {
     }
 }
 
-interface IOptions {
-    db: Database;
-    ng: Engine;
+class Options<T> {
+    private constructor(private opts: T, private args: { [key: string]: string } = {}) { }
+
+    public static parse(): Options<{}> {
+        return new Options({}, process.argv.slice(2).reduce((result, arg) => {
+            const [, key, value] = arg.match(/--(\w+)=\'([^\']+)\'/);
+            result[key] = value;
+            return result;
+        }, {}));
+    }
+
+    public option<K extends string, S>(key: K, evalfn: ((value: string) => S)): Options<T & { [key in K]: S }> {
+        const opt = { [key]: evalfn(this.args[key]) } as { [key in K]: S };
+        return new Options({ ...this.opts, ...opt }, this.args);
+    }
+
+    public get argv(): T {
+        return this.opts;
+    }
 }
 
-const { db, ng } = process.argv.slice(2).map(v => v.split('=')).reduce<Partial<IOptions>>((result, [key, value]) => {
-    switch (key) {
-        case "database":
-        case "d":
-            result["db"] = Database.open(value);
-            break;
-        case "engine":
-        case "e":
-            result["ng"] = Engine.create(value === "geometric" ? EngineType.GEOMETRIC : EngineType.ALGEBRAIC);
-            break;
-    }
-    return result;
-}, {});
+const { database, engine } = Options
+    .parse()
+    .option("database", v => Database.open(v))
+    .option("engine", v => Engine.create(v === "geometric" ? EngineType.GEOMETRIC : EngineType.ALGEBRAIC))
+    .argv;
 
 CLI.start(
-    db || Database.temp(),
-    ng || Engine.create()
+    database || Database.temp(),
+    engine || Engine.create(),
 );
