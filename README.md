@@ -1,6 +1,7 @@
 ﻿# ![logo](https://raw.githubusercontent.com/dlw93/sigmaDB/master/assets/sigmaDB.png)
 
 [![NPM](https://badge.fury.io/js/%40sigma-db%2Fcore.svg)](https://www.npmjs.com/package/@sigma-db/core)
+[![dependencies Status](https://david-dm.org/dlw93/sigmaDB/status.svg)](https://david-dm.org/dlw93/sigmaDB)
 [![Build Status](https://dev.azure.com/sigmaDB/sigma-frontend/_apis/build/status/sigmaDB?branchName=master)](https://dev.azure.com/sigmaDB/sigma-frontend/_build/latest?definitionId=5&branchName=master)
 
 *sigmaDB* is a relational database engine that aims to incorporate some of the latest findings in database theory.

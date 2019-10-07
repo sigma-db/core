@@ -7,7 +7,8 @@
     "module": "commonjs",
     "outDir": "dist",
     "target": "esnext",
-    "sourceMap": true
+    "sourceMap": true,
+    "removeComments": false
   },
   "include": [
     "lib/**/*",

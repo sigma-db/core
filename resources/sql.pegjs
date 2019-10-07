@@ -1,10 +1,8 @@
 start = _ q:query _ semicolon { return q }
 query = q:select_stmt { return { type: "select", query: q } }
-      / q:use_stmt { return { type: "use", query: q } }
 
 /* Statements */
 select_stmt "select statement" = SELECT __ s:sel_list f:(__ FROM __ from_list (__ WHERE __ cond_list)?)? { return {select: s, from: f[3], where: f[4][3]} }
-use_stmt    "use statement"    = USE __ d:db_name { return { database: d } }
 
 /* Clauses */
 sel_list  "selection list"     = first:sel rest:(_ comma _ @sel)* { return { type: "list", columns: [first, ...rest]} } 
@@ -33,7 +31,6 @@ INSERT "INSERT" = "INSERT"i
 INTO   "INTO"   = "INTO"i
 SELECT "SELECT" = "SELECT"i
 STAR   "*"      = "*"
-USE    "USE"    = "USE"i
 VALUES "VALUES" = "VALUES"i
 WHERE  "WHERE"  = "WHERE"i
 

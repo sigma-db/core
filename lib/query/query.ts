@@ -1,4 +1,5 @@
 ﻿import { parse as parseCQ } from "./parsers/cq";
+import { parse as parseSQL } from "./parsers/sql";
 import { TQuery } from "./query-type";
 
 export const enum QueryLang { CQ, SQL }
@@ -12,7 +13,7 @@ export class Query {
     public static parse(query: string, lang = QueryLang.CQ): TQuery {
         switch (lang) {
             case QueryLang.CQ: return parseCQ(query);
-            case QueryLang.SQL: throw new Error("SQL support is not yet implemented");
+            case QueryLang.SQL: return parseSQL(query);
             default: throw new Error("Unsupported query language");
         }
     }

@@ -51,19 +51,30 @@ class CLI {
 class Options<T> {
     private constructor(private opts: T, private args: { [key: string]: string } = {}) { }
 
+    /**
+     * Parses the command line arguments into an internal dictionary structure
+     */
     public static parse(): Options<{}> {
         return new Options({}, process.argv.slice(2).reduce((result, arg) => {
-            const [, key, value] = arg.match(/--(\w+)=\'([^\']+)\'/);
+            const [, key, value] = arg.match(/--(\w+)=\"([^\"]+)\"/);
             result[key] = value;
             return result;
         }, {}));
     }
 
+    /**
+     * Adds a command line option to the CLI
+     * @param key The key of the option (e.g. `input` in `--input`)
+     * @param evalfn The function to transform the value as in `--input=value`
+     */
     public option<K extends string, S>(key: K, evalfn: ((value: string) => S)): Options<T & { [key in K]: S }> {
-        const opt = { [key]: evalfn(this.args[key]) } as { [key in K]: S };
+        const opt = (key in this.args ? { [key]: evalfn(this.args[key]) } : { [key]: undefined }) as { [key in K]: S };
         return new Options({ ...this.opts, ...opt }, this.args);
     }
 
+    /**
+     * The processed arguments
+     */
     public get argv(): T {
         return this.opts;
     }
