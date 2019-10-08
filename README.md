@@ -31,7 +31,7 @@ If instead you want to clone the repository and build sigmaDB from source by you
 * To build the library and the accompanying client application, run `npm run build`.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
-You can now use sigmaDB as described in [Installation](#installation)
+You can now use sigmaDB as described in [Installation](#installation).
 
 ## Query Language
 

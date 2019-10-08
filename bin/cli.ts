@@ -7,7 +7,7 @@ class CLI {
         if (!database.isLogged) {
             console.warn("Working in a temporary database.");
             console.warn("Any data generated during this session will be lost upon closing the client!\n");
-            console.warn("Run the client with 'sigma --database=</path/to/database>' to make changes persistent.");
+            console.warn("Run the client with 'sigma --database=\"</path/to/database>\"' to make changes persistent.");
         }
         const cli = new CLI(database, engine);
         cli.repl.prompt();
@@ -48,43 +48,44 @@ class CLI {
     }
 }
 
-class Options<T> {
-    private constructor(private opts: T, private args: { [key: string]: string } = {}) { }
+class Options<T extends { [key: string]: <S>(value: string) => S } = {}> {
+    private constructor(private opts: T) { }
 
     /**
-     * Parses the command line arguments into an internal dictionary structure
+     * Generate a new `Options` instance
      */
-    public static parse(): Options<{}> {
-        return new Options({}, process.argv.slice(2).reduce((result, arg) => {
-            const [, key, value] = arg.match(/--(\w+)=\"([^\"]+)\"/);
-            result[key] = value;
-            return result;
-        }, {}));
+    public static init(): Options<{}> {
+        return new Options({});
     }
 
     /**
      * Adds a command line option to the CLI
      * @param key The key of the option (e.g. `input` in `--input`)
-     * @param evalfn The function to transform the value as in `--input=value`
+     * @param fn The function to transform the `value` as in `--input="value"`
      */
-    public option<K extends string, S>(key: K, evalfn: ((value: string) => S)): Options<T & { [key in K]: S }> {
-        const opt = (key in this.args ? { [key]: evalfn(this.args[key]) } : { [key]: undefined }) as { [key in K]: S };
-        return new Options({ ...this.opts, ...opt }, this.args);
+    public option<K extends string, S>(key: K, fn: ((value: string) => S)): Options<T & { [key in K]: ((value: string) => S) }> {
+        return new Options({ ...this.opts, ...{ [key]: fn } });
     }
 
     /**
-     * The processed arguments
+     * Parses the command line arguments with regard to the provided options
      */
-    public get argv(): T {
-        return this.opts;
+    public parse(): Partial<{ [P in keyof T]: ReturnType<T[P]> }> {
+        return process.argv.slice(2).reduce<Partial<{ [P in keyof T]: ReturnType<T[P]> }>>((result, arg) => {
+            const [, key, value] = arg.match(/--(\w+)=(.+)/);
+            if (key in this.opts) {
+                result[key as keyof T] = this.opts[key](value);
+            }
+            return result;
+        }, {});
     }
 }
 
 const { database, engine } = Options
-    .parse()
+    .init()
     .option("database", v => Database.open(v))
     .option("engine", v => Engine.create(v === "geometric" ? EngineType.GEOMETRIC : EngineType.ALGEBRAIC))
-    .argv;
+    .parse();
 
 CLI.start(
     database || Database.temp(),
