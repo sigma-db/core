@@ -1,8 +1,7 @@
-﻿#!/usr/bin/env node
-import * as readline from "readline";
-import { Database, Engine, EngineType, Query } from "../lib";
+﻿import * as readline from "readline";
+import { Database, Engine, Query } from "../lib";
 
-class CLI {
+export default class CLI {
     public static start(database: Database, engine: Engine): void {
         if (!database.isLogged) {
             console.warn("Working in a temporary database.");
@@ -47,47 +46,3 @@ class CLI {
         this.repl.prompt();
     }
 }
-
-class Options<T extends { [key: string]: <S>(value: string) => S } = {}> {
-    private constructor(private opts: T) { }
-
-    /**
-     * Generate a new `Options` instance
-     */
-    public static init(): Options<{}> {
-        return new Options({});
-    }
-
-    /**
-     * Adds a command line option to the CLI
-     * @param key The key of the option (e.g. `input` in `--input`)
-     * @param fn The function to transform the `value` as in `--input="value"`
-     */
-    public option<K extends string, S>(key: K, fn: ((value: string) => S)): Options<T & { [key in K]: ((value: string) => S) }> {
-        return new Options({ ...this.opts, ...{ [key]: fn } });
-    }
-
-    /**
-     * Parses the command line arguments with regard to the provided options
-     */
-    public parse(): Partial<{ [P in keyof T]: ReturnType<T[P]> }> {
-        return process.argv.slice(2).reduce<Partial<{ [P in keyof T]: ReturnType<T[P]> }>>((result, arg) => {
-            const [, key, value] = arg.match(/--(\w+)=(.+)/);
-            if (key in this.opts) {
-                result[key as keyof T] = this.opts[key](value);
-            }
-            return result;
-        }, {});
-    }
-}
-
-const { database, engine } = Options
-    .init()
-    .option("database", v => Database.open(v))
-    .option("engine", v => Engine.create(v === "geometric" ? EngineType.GEOMETRIC : EngineType.ALGEBRAIC))
-    .parse();
-
-CLI.start(
-    database || Database.temp(),
-    engine || Engine.create(),
-);

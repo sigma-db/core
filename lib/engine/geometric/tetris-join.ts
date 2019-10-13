@@ -26,7 +26,7 @@ export class TetrisJoin {
         this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
-    public execute(atoms: IResolvedAtom[]): SkipList<Tuple> {
+    private execute(atoms: IResolvedAtom[]): SkipList<Tuple> {
         const all = Box.from(this.wildcard);
         const result = new SkipList<Tuple>();
 

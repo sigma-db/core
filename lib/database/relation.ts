@@ -1,4 +1,4 @@
-﻿import { Dyadic } from "../util/dyadic";
+﻿import { Dyadic, SigmaError } from "../util";
 import { DuplicateKeyError, TList, SkipList, IList, ListType, ArrayList } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
@@ -15,7 +15,7 @@ interface IOptions {
     sorted: boolean;
 }
 
-class DuplicateTupleError extends Error {
+class DuplicateTupleError extends SigmaError {
     constructor(private readonly _rel: string, private readonly _tuple: Tuple, private readonly _schema: Attribute[]) {
         super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
     }
@@ -29,7 +29,7 @@ class DuplicateTupleError extends Error {
     }
 }
 
-class ValueOutOfLimitsError extends Error {
+class ValueOutOfLimitsError extends SigmaError {
     constructor(_rel: string, _tuple: Tuple, _schema: Attribute[], _pos: number) {
         const value = _schema[_pos].valueOf(_tuple[_pos]);
         const tupleStr = _tuple.toString(_schema);
@@ -191,7 +191,7 @@ export abstract class Relation implements Iterable<Tuple> {
             for (let j = 0; j < this.arity; j++) {
                 const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 const back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
         } else if (succ.compareTo(tuple) === 0) {
             // probe tuple is in relation --> return empty box set
@@ -200,7 +200,7 @@ export abstract class Relation implements Iterable<Tuple> {
             for (let j = 0; j < this.arity; j++) {
                 const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 const back = wildcard.slice(j + 1);
-                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
         } else {
             // probe tuple is between pred and succ
@@ -209,18 +209,18 @@ export abstract class Relation implements Iterable<Tuple> {
             for (let j = s + 1; j < this.arity; j++) {
                 const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
                 const back = wildcard.slice(j + 1);
-                Dyadic.get(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
             for (let j = s + 1; j < this.arity; j++) {
                 const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
                 const back = wildcard.slice(j + 1);
-                Dyadic.get(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
             }
 
             const front = pred.slice(0, s).map((z, i) => z ^ max[i]);
             const back = wildcard.slice(s + 1);
-            Dyadic.get(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+            Dyadic.intervals(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
         }
 
         return gaps;
@@ -243,7 +243,7 @@ export abstract class Relation implements Iterable<Tuple> {
         const [, max, exp, wildcard] = this._boundaries;
         const front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
         const back = wildcard.slice(dim + 1);
-        return Dyadic.get(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
+        return Dyadic.intervals(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
     }
 
     private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {

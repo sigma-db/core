@@ -18,7 +18,7 @@ export class Dyadic {
      * @param end The end of the open interval.
      * @param exp The index of the most significant bit of the maximum allowed value
      */
-    public static get(start: bigint, end: bigint, exp: number): Array<bigint> {
+    public static intervals(start: bigint, end: bigint, exp: number): Array<bigint> {
         if (start + 1n <= end - 1n) {
             return [...Dyadic.dyadic(start + 1n, end - 1n, exp)];
         } else {
@@ -27,7 +27,7 @@ export class Dyadic {
     }
 
     private static *dyadic(start: bigint, end: bigint, exp: number): IterableIterator<bigint> {
-        const root = Dyadic.msb(start ^ end) + 1;  // index i of most significant bit s.t. start[j] == end[j] f.a. j > i
+        const root = Dyadic.msb(start ^ end) + 1;  // index i of least significant bit s.t. start[j] == end[j] f.a. j > i
         const mask = (1n << BigInt(root)) - 1n;
 
         if ((start & mask) === 0n && (end & mask) === mask) {
