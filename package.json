@@ -22,7 +22,8 @@
   },
   "scripts": {
     "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "refreshVSToken": "vsts-npm-auth -config .npmrc"
   },
   "dependencies": {},
   "bin": {

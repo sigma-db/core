@@ -5,7 +5,6 @@ import { Box } from "./box";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
-import { AssertionError } from "assert";
 
 type TSchema = Attribute[];
 
@@ -41,6 +40,12 @@ class ValueOutOfLimitsError extends SigmaError {
         } else {
             super(`Value ${value} in ${_rel}${tupleStr} exceeds value limit for attribute "${attrName}" (maximum is ${max}).`);
         }
+    }
+}
+
+class UnsupportedOperationException extends SigmaError {
+    constructor(fn: Function, req: string) {
+        super(`Function ${fn.name} can only be executed if ${req}.`);
     }
 }
 
@@ -84,20 +89,14 @@ export abstract class Relation implements Iterable<Tuple> {
         sorted: true,
     } as const;
 
-    protected _name: string;
-    protected _schema: TSchema;
-    protected _tuples: TList<Tuple>;
     private readonly _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
 
-    constructor(name: string, schema: TSchema, tuples: TList<Tuple>) {
-        this._name = name;
-        this._schema = schema;
-        this._tuples = tuples;
+    constructor(protected readonly _name: string, protected readonly _schema: TSchema, protected _tuples: TList<Tuple>) {
         this._boundaries = [
-            this._schema.map(attr => attr.min - 1n),
-            this._schema.map(attr => attr.max),
-            this._schema.map(attr => attr.exp),
-            this._schema.map(attr => attr.wildcard),
+            _schema.map(attr => attr.min - 1n),
+            _schema.map(attr => attr.max),
+            _schema.map(attr => attr.exp),
+            _schema.map(attr => attr.wildcard),
         ];
     }
 
@@ -141,6 +140,10 @@ export abstract class Relation implements Iterable<Tuple> {
      */
     public get isLogged(): boolean {
         return this instanceof RelationLogged;
+    }
+
+    public get isSorted(): boolean {
+        return this._tuples instanceof SkipList;
     }
 
     /**
@@ -248,7 +251,7 @@ export abstract class Relation implements Iterable<Tuple> {
 
     private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {
         if (!(list instanceof SkipList)) {
-            throw new AssertionError({ message: "Gaps can only be retrieved from ordered relations, but the relation is not ordered." });
+            throw new UnsupportedOperationException(this.gaps, "the relation is ordered.");
         }
     }
 }
