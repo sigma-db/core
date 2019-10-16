@@ -13,5 +13,7 @@ steps:
 - script: npm ci
   displayName: 'npm install and build'
 
-- script: npm publish
-  displayName: 'npm publish'
+- task: Npm@1
+  inputs:
+    command: 'publish'
+    publishEndpoint: 'npm'
