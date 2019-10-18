@@ -1,5 +1,5 @@
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, IVariableValue, QueryType, TLiteral, TQuery, TupleType, ISelectQuery, ValueType } from "../query";
+import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, IVariableValue, QueryType, TLiteral, TQuery, TupleType, ISelectQuery, ValueType, Query } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
@@ -46,7 +46,15 @@ export abstract class Engine {
      * @param query The query to evaluate
      * @param db The database to evaluate the query on
      */
-    public evaluate(query: TQuery, db: Database): Relation | void {
+    public evaluate(query: Query<TQuery> | Query<TQuery[]>, db: Database): Relation | void {
+        if (query.isQuery()) {
+            return this.evaluateQuery(query.AST, db);
+        } else {    // it's a program, i.e. array of queries
+            
+        }
+    }
+
+    private evaluateQuery(query: TQuery, db: Database): Relation | void {
         switch (query.type) {
             case QueryType.INSERT: return this.onInsert(query, db);
             case QueryType.SELECT: return this.onSelect(query, db);

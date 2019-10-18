@@ -10,7 +10,7 @@ fs.readdirSync(src).forEach(f => {
     const _dst = path.join(dst, `${path.parse(f).name}.js`);
 
     const grammar = fs.readFileSync(_src, 'utf8');
-    const parser = peg.generate(grammar, { output: "source", format: "commonjs" });
+    const parser = peg.generate(grammar, { allowedStartRules: ["program", "query"], output: "source", format: "commonjs" });
 
     fs.writeFileSync(_dst, parser);
 });

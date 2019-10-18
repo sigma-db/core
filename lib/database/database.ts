@@ -51,6 +51,9 @@ export abstract class Database {
         }
     }
 
+    // public createOverlay(): Database {
+    // }
+
     /**
      * The current schema of the database
      */

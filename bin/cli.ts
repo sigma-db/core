@@ -18,7 +18,6 @@ export default class CLI {
         this.repl = readline.createInterface({
             input: process.stdin,
             output: process.stdout,
-            prompt: "> ",
         });
         this.repl.on("line", input => this.onLine(input));
         this.repl.on("close", () => this.onClose());

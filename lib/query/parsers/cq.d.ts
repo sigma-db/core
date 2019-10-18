@@ -1,9 +1,12 @@
 import { TQuery } from "../query-type";
 
 interface ParserOptions {
-    startRule?: string;
-    tracer?: any;
-    [key: string]: any;
+    startRule?: "query" | "program";
 }
 
-export function parse(input: string, options?: ParserOptions): TQuery;
+type TReturnType<T extends ParserOptions> =
+    T["startRule"] extends "query" ? TQuery :
+    T["startRule"] extends "program" ? TQuery[] :
+    never;
+
+export function parse<T extends ParserOptions>(input: string, options?: T): TReturnType<T>;

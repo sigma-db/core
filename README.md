@@ -4,6 +4,7 @@
 [![Dependencies](https://david-dm.org/dlw93/sigmaDB/status.svg)](https://david-dm.org/dlw93/sigmaDB)
 [![CodeFactor](https://www.codefactor.io/repository/github/dlw93/sigmadb/badge)](https://www.codefactor.io/repository/github/dlw93/sigmadb)
 [![Build Status](https://dev.azure.com/dlw/sigmaDB/_apis/build/status/sigmaDB?branchName=master)](https://dev.azure.com/dlw/sigmaDB/_build/latest?definitionId=2&branchName=master)
+![node version](https://img.shields.io/node/v/@sigma-db/core)
 
 *sigmaDB* is a relational database engine that aims to incorporate some of the latest findings in database theory.
 While many of the proposed approaches are provably optimal in some *theoretical* sense, it usually remains an open question how the performance would be in *practice*.
