@@ -48,37 +48,56 @@ We discern four types of queries, whose syntax we outline by example:
 
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.
 
+```Prolog
+% create tables
+Employee: (
+    id: int,
+    name: string(32),
+    salary: int,
+    division: int
+).
+Division: (
+    id: int,
+    name: string(64),
+    head: int
+).
+
+% insert into tables
+Division(0, "Research and Development", 1).
+Division(1, "Marketing", 0).
+Employee(0, "Jack Walls", 8360, 1).
+Employee(1, "Nicole Smith", 7120, 0).
+Employee(2, "Joan Waters", 2700, 0).
+Employee(3, "David Brown", 4200, 1).
+Employee(4, "Marc Wilson", 4200, 1).
+
+% ask a query
+Order(master=x, servant=y) <-
+    Employee(name=x, division=z, id=u),
+    Employee(name=y, division=z),
+    Division(id=z, head=u).
+```
+
+Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:
+
 ```TypeScript
 import { Database, Engine, Query } from "sigma";
-
-// the script we want to execute
-const script = `
-    % create tables
-    Employee: (id: int, name: string(32), salary: int, division: int).
-    Division: (id: int, name: string(64), head: int).
-
-    % insert into tables
-    Division(0, "Research and Development", 1).
-    Division(1, "Marketing", 0).
-    Employee(0, "Jack Walls", 8360, 1).
-    Employee(1, "Nicole Smith", 7120, 0).
-    Employee(2, "Joan Waters", 2700, 0).
-    Employee(3, "David Brown", 4200, 1).
-    Employee(4, "Marc Wilson", 4200, 1).
-
-    % ask a query
-    '(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u).
-`;
+import { readFileSync } from "fs";
 
 const db = Database.open();     // using a temporary database
 const ng = Engine.create();     // using the default query evaluation engine
-const cp = Query.parse(script, { script: true });  // parse the script as a conjunctive program
+const cp = Query.parse(         // using the default CQ parser
+    readFileSync("employees.cqs", "utf8"),
+    { script: true },           // interpret the input as a conjunctive program
+);
 
-// execute program on db
+// execute the program on db
 const result = ng.evaluate(cp, db);
-if (!!result) {
+if (result) {
     console.table([...result.tuples()]);
 }
+
+// free up used memory
 db.close();
 ```
 
