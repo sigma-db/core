@@ -1,5 +1,5 @@
-start = _ q:query _ semicolon { return q }
-query = q:select_stmt { return { type: "select", query: q } }
+program = queries:(@query ";" _)* { return queries }
+query   = _ q:select_stmt _ { return { type: "select", query: q } }
 
 /* Statements */
 select_stmt "select statement" = SELECT __ s:sel_list f:(__ FROM __ from_list (__ WHERE __ cond_list)?)? { return {select: s, from: f[3], where: f[4][3]} }
@@ -41,7 +41,6 @@ lbracket "[" = "["
 rbracket "]" = "]"
 
 /* Delimiters */
-semicolon "semicolon"  = ";"
 comma     "comma"      = ","
 _         "whitespace" = [ \t\r\n]*
 __        "whitespace" = [ \t\r\n]+

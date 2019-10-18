@@ -51,32 +51,34 @@ The following script **creates** a database with two relations *Employee* and *D
 ```TypeScript
 import { Database, Engine, Query } from "sigma";
 
+// the script we want to execute
+const script = `
+    % create tables
+    Employee: (id: int, name: string(32), salary: int, division: int).
+    Division: (id: int, name: string(64), head: int).
+
+    % insert into tables
+    Division(0, "Research and Development", 1).
+    Division(1, "Marketing", 0).
+    Employee(0, "Jack Walls", 8360, 1).
+    Employee(1, "Nicole Smith", 7120, 0).
+    Employee(2, "Joan Waters", 2700, 0).
+    Employee(3, "David Brown", 4200, 1).
+    Employee(4, "Marc Wilson", 4200, 1).
+
+    % ask a query
+    '(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u).
+`;
+
 const db = Database.open();     // using a temporary database
 const ng = Engine.create();     // using the default query evaluation engine
-const program = [
-    // create tables
-    'Employee: (id: int, name: string(32), salary: int, division: int)',
-    'Division: (id: int, name: string(64), head: int)',
-    // insert into tables
-    'Division(0, "Research and Development", 1)',
-    'Division(1, "Marketing", 0)',
-    'Employee(0, "Jack Walls", 8360, 1)',
-    'Employee(1, "Nicole Smith", 7120, 0)',
-    'Employee(2, "Joan Waters", 2700, 0)',
-    'Employee(3, "David Brown", 4200, 1)',
-    'Employee(4, "Marc Wilson", 4200, 1)',
-    // ask a query
-    '(master=x, servant=y) <- Employee(name=x, division=z, id=u), Employee(name=y, division=z), Division(id=z, head=u)'
-].map(q => Query.parse(q)); // compile queries
+const cp = Query.parse(script, { script: true });  // parse the script as a conjunctive program
 
 // execute program on db
-program.forEach(query => {
-    const result = ng.evaluate(query, db);
-    if (!!result) {
-        console.table([...result.tuples()]);
-    }
-});
-
+const result = ng.evaluate(cp, db);
+if (!!result) {
+    console.table([...result.tuples()]);
+}
 db.close();
 ```
 
