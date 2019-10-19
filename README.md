@@ -1,8 +1,7 @@
-﻿# ![logo](https://raw.githubusercontent.com/dlw93/sigmaDB/master/assets/sigmaDB.png)
+﻿# ![logo](./assets/sigmaDB.png =300x75)
 
 [![NPM](https://img.shields.io/npm/v/@sigma-db/core)](https://www.npmjs.com/package/@sigma-db/core)
 [![Dependencies](https://david-dm.org/dlw93/sigmaDB/status.svg)](https://david-dm.org/dlw93/sigmaDB)
-[![CodeFactor](https://www.codefactor.io/repository/github/dlw93/sigmadb/badge)](https://www.codefactor.io/repository/github/dlw93/sigmadb)
 [![Build Status](https://dev.azure.com/dlw/sigmaDB/_apis/build/status/sigmaDB?branchName=master)](https://dev.azure.com/dlw/sigmaDB/_build/latest?definitionId=2&branchName=master)
 ![node version](https://img.shields.io/node/v/@sigma-db/core)
 
@@ -28,7 +27,7 @@ Thereafter, you can run sigmaDB from the command line with `sigma --database=</p
 
 If instead you want to clone the repository and build sigmaDB from source by yourself, follow these steps:
 
-* Clone the project with `git clone https://github.com/dlw93/sigmaDB`.
+* Clone the project with `git clone https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB`.
 * From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/).
 * To build the library and the accompanying client application, run `npm run build`.
 * To make the package accessible from other projects and the command line, run `npm link`.
