@@ -50,13 +50,13 @@ The following script **creates** a database with two relations *Employee* and *D
 ```Prolog
 % create tables
 Employee: (
-    id: int,
-    name: string(32),
-    salary: int,
+    id:       int,
+    name:     string(32),
+    salary:   int,
     division: int
 ).
 Division: (
-    id: int,
+    id:   int,
     name: string(64),
     head: int
 ).
