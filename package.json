@@ -11,6 +11,7 @@
     "type": "git",
     "url": "https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB"
   },
+  "readme": "See https://dev.azure.com/dlw/sigmaDB",
   "license": "MIT",
   "engines": {
     "node": ">=11.0.0"

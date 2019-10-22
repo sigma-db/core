@@ -39,6 +39,10 @@ export abstract class Database {
         }
     }
 
+    public createOverlay(): DatabaseOverlay {
+        return DatabaseOverlay.create(this);
+    }
+
     /**
      * Access a given relation
      * @param rel The name of the relation to retrieve
@@ -49,6 +53,10 @@ export abstract class Database {
         } else {
             throw new Error(`Relation ${rel} does not exist in this database.`);
         }
+    }
+
+    public hasRelation(rel: string): boolean {
+        return rel in this.relations;
     }
 
     /**
@@ -121,5 +129,49 @@ class DatabaseLogged extends Database {
 
     protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema, { log: this.log });
+    }
+}
+
+class DatabaseOverlay extends Database {
+    public static create(parent: Database): DatabaseOverlay {
+        return new DatabaseOverlay(parent);
+    }
+
+    protected readonly relations: { [name: string]: Relation } = {};
+
+    private constructor(private readonly parent: Database) {
+        super();
+    }
+
+    public createRelation(name: string, schema: Attribute[]): void {
+        if (!this.hasRelation(name) && !this.parent.hasRelation(name)) {
+            this.relations[name] = Relation.create(name, schema);
+        } else {
+            throw new Error(`Relation "${name}" already exists.`);
+        }
+    }
+
+    public addOverlayRelation(rel: Relation) {
+        if (!this.hasRelation(rel.name) && !this.parent.hasRelation(rel.name)) {
+            this.relations[rel.name] = rel;
+        } else {
+            throw new Error(`Relation "${rel.name}" already exists.`);
+        }
+    }
+
+    public relation(rel: string): Relation {
+        if (this.hasRelation(rel)) {
+            return this.relations[rel];
+        } else if (this.parent.hasRelation(rel)) {
+            return this.parent.relation(rel);
+        } else {
+            throw new Error(`Relation ${rel} does not exist in this database.`);
+        }
+    }
+
+    public close(): void { }
+
+    protected relationConstructor(name: string, schema: Attribute[]): Relation {
+        throw new Error("Method not implemented.");
     }
 }

@@ -1,3 +1,3 @@
 ﻿export { Database } from "./database";
-export { Query as Query, QueryLang, QueryType } from "./query";
-export { Engine, EngineType } from "./engine";
+export { Query, QueryLang, QueryType, Program } from "./query";
+export { Engine, EngineType, ResultType } from "./engine";

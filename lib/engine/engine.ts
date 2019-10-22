@@ -5,11 +5,10 @@ import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
-export const enum ResultType { RELATION, DATABASE, SUCCESS }
+export const enum ResultType { RELATION, SUCCESS }
 
 export type TResult =
     | { type: ResultType.RELATION, relation: Relation }
-    | { type: ResultType.DATABASE, database: Database }
     | { type: ResultType.SUCCESS, success: true }
     | { type: ResultType.SUCCESS, success: false, message: string };
 
@@ -57,10 +56,18 @@ export abstract class Engine {
         if (query instanceof Program) {
             const { statements } = query;
             if (statements.length > 0) {
+                const overlay = db.createOverlay();
                 for (let i = 0; i < statements.length; i++) {
-                    this.evaluateQuery(statements[i], db);
+                    try {
+                        const result = this.evaluateQuery(statements[i], overlay);
+                        if (!!result) {
+                            overlay.addOverlayRelation(result);
+                        }
+                    } catch (e) {
+                        return { type: ResultType.SUCCESS, success: false, message: e.message };
+                    }
                 }
-                return { type: ResultType.DATABASE, database: db };
+                return { type: ResultType.SUCCESS, success: true };
             }
         } else {
             try {

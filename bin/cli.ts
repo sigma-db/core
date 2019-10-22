@@ -1,16 +1,20 @@
 ﻿import * as readline from "readline";
-import { Database, Engine, Query } from "../lib";
-import { ResultType } from "../lib/engine/engine";
-import { Relation } from "../lib/database";
+import { Database, Engine, Query, ResultType, Program } from "../lib";
 
 export default class CLI {
-    public static start(database: Database, engine: Engine): void {
+    public static start(database: Database, engine: Engine, script?: Program): void {
         if (!database.isLogged) {
             console.warn("Working in a temporary database.");
             console.warn("Any data generated during this session will be lost upon closing the client!\n");
             console.warn("Run the client with 'sigma --database=\"</path/to/database>\"' to make changes persistent.");
         }
+
         const cli = new CLI(database, engine);
+
+        if (!!script) {
+            cli.onQuery(script)
+        }
+
         cli.repl.prompt();
     }
 
@@ -21,26 +25,22 @@ export default class CLI {
             input: process.stdin,
             output: process.stdout,
         });
-        this.repl.on("line", input => this.onLine(input));
-        this.repl.on("close", () => this.onClose());
+        this.repl.on("close", () => this.database.close());
+        this.repl.on("line", input => {
+            this.onQuery(Query.parse(input));
+            this.repl.prompt();
+        });
     }
 
-    private onClose(): void {
-        this.database.close();
-    }
-
-    private onLine(input: string): void {
-        const query = Query.parse(input);
-        const result = this.engine.evaluate(query, this.database);
+    private onQuery(input: Query | Program) {
+        const result = this.engine.evaluate(input, this.database);
         switch (result.type) {
             case ResultType.RELATION:
-                this.dumpRelation(result.relation);
-                break;
-            case ResultType.DATABASE:
-                const { schema } = result.database;
-                for (const relation of Object.values(schema)) {
-                    this.dumpRelation(relation);
+                const { name, size } = result.relation;
+                if (!!name) {
+                    console.log(`${name} (${size} tuples):`);
                 }
+                console.table([...result.relation.tuples()]);
                 break;
             case ResultType.SUCCESS:
                 if (result.success === true) {
@@ -50,14 +50,5 @@ export default class CLI {
                 }
                 break;
         }
-        this.repl.prompt();
-    }
-
-    private dumpRelation(relation: Relation): void {
-        const { name, size } = relation;
-        if (!!name) {
-            console.log(`${name} (${size} tuples):`);
-        }
-        console.table([...relation.tuples()]);
     }
 }

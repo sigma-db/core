@@ -1,1 +1,1 @@
-export { Engine, EngineType } from "./engine";
+export { Engine, EngineType, ResultType } from "./engine";

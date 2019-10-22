@@ -1,45 +1,23 @@
 ﻿import { parse as parseCQ } from "./parsers/cq";
 import { parse as parseSQL } from "./parsers/sql";
-import { TQuery } from "./query-type";
+import { TQuery, TProgram } from "./query-type";
 
 export const enum QueryLang { CQ, SQL }
 
-interface IOptions {
-    script: boolean;
-    lang: QueryLang;
-}
-
-type TParserResult<T extends Partial<IOptions>> = T["script"] extends true ? Program : Query;
-
-abstract class QueryBase {
-    private static readonly DEFAULT_OPTIONS: IOptions = {
-        script: false,
-        lang: QueryLang.CQ,
-    } as const;
+export class Query {
+    private constructor(private readonly _ast: TQuery) { }
 
     /**
      * Turns the string representation of a query into an internal query object
      * @param query The query to parse
-     * @param options The language of the query. Defaults to CQ.
+     * @param lang The language of the query. Defaults to CQ.
      */
-    public static parse<O extends Partial<IOptions>>(query: string, options?: O): TParserResult<O> {
-        const { lang, script } = { ...QueryBase.DEFAULT_OPTIONS, ...options };
-        return (script ? new Program(QueryBase._parse(query, lang, true)) : new Query(QueryBase._parse(query, lang, false))) as TParserResult<O>;
-    }
-
-    private static _parse<B extends boolean>(query: string, lang: QueryLang, script: B): B extends true ? TQuery[] : TQuery {
-        const startRule = script ? "program" : "query";
+    public static parse(query: string, lang = QueryLang.CQ): Query {
         switch (lang) {
-            case QueryLang.CQ: return parseCQ(query, { startRule });
-            case QueryLang.SQL: return parseSQL(query, { startRule });
+            case QueryLang.CQ: return new Query(parseCQ(query, { startRule: "query" }));
+            case QueryLang.SQL: return new Query(parseSQL(query, { startRule: "query" }));
             default: throw new Error("Unsupported query language");
         }
-    }
-}
-
-export class Query extends QueryBase {
-    constructor(private readonly _ast: TQuery) {
-        super();
     }
 
     public get AST(): TQuery {
@@ -47,12 +25,23 @@ export class Query extends QueryBase {
     }
 }
 
-export class Program extends QueryBase {
-    constructor(private readonly _stmts: TQuery[]) {
-        super();
+export class Program {
+    private constructor(private readonly _stmts: TQuery[]) { }
+
+    /**
+     * Turns the string representation of a script into an internal script object
+     * @param script The script to parse
+     * @param lang The language of the script. Defaults to CQ.
+     */
+    public static parse(script: string, lang = QueryLang.CQ): Program {
+        switch (lang) {
+            case QueryLang.CQ: return new Program(parseCQ(script, { startRule: "program" }));
+            case QueryLang.SQL: return new Program(parseSQL(script, { startRule: "program" }));
+            default: throw new Error("Unsupported query language");
+        }
     }
 
-    public get statements(): TQuery[] {
+    public get statements(): TProgram {
         return this._stmts;
     }
 }
