@@ -1,10 +1,17 @@
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, IVariableValue, QueryType, TLiteral, TQuery, TupleType, ISelectQuery, ValueType, Query } from "../query";
+import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, IVariableValue, QueryType, TLiteral, TQuery, TupleType, ISelectQuery, ValueType, Query, Program } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
+export const enum ResultType { RELATION, DATABASE, SUCCESS }
+
+export type TResult =
+    | { type: ResultType.RELATION, relation: Relation }
+    | { type: ResultType.DATABASE, database: Database }
+    | { type: ResultType.SUCCESS, success: true }
+    | { type: ResultType.SUCCESS, success: false, message: string };
 
 export abstract class Engine {
     /**
@@ -46,11 +53,26 @@ export abstract class Engine {
      * @param query The query to evaluate
      * @param db The database to evaluate the query on
      */
-    public evaluate(query: Query<TQuery> | Query<TQuery[]>, db: Database): Relation | void {
-        if (query.isQuery()) {
-            return this.evaluateQuery(query.AST, db);
-        } else {    // it's a program, i.e. array of queries
-            
+    public evaluate(query: Query | Program, db: Database): TResult {
+        if (query instanceof Program) {
+            const { statements } = query;
+            if (statements.length > 0) {
+                for (let i = 0; i < statements.length; i++) {
+                    this.evaluateQuery(statements[i], db);
+                }
+                return { type: ResultType.DATABASE, database: db };
+            }
+        } else {
+            try {
+                const result = this.evaluateQuery(query.AST, db);
+                if (!!result) {
+                    return { type: ResultType.RELATION, relation: result };
+                } else {
+                    return { type: ResultType.SUCCESS, success: true };
+                }
+            } catch (e) {
+                return { type: ResultType.SUCCESS, success: false, message: e.message };
+            }
         }
     }
 

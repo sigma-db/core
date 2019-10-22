@@ -1,5 +1,7 @@
 ﻿import * as readline from "readline";
 import { Database, Engine, Query } from "../lib";
+import { ResultType } from "../lib/engine/engine";
+import { Relation } from "../lib/database";
 
 export default class CLI {
     public static start(database: Database, engine: Engine): void {
@@ -28,20 +30,34 @@ export default class CLI {
     }
 
     private onLine(input: string): void {
-        try {
-            const query = Query.parse(input);
-            const result = this.engine.evaluate(query, this.database);
-            if (!!result) {
-                if (!!result.name) {
-                    console.log(`${result.name} (${result.size} tuples):`);
+        const query = Query.parse(input);
+        const result = this.engine.evaluate(query, this.database);
+        switch (result.type) {
+            case ResultType.RELATION:
+                this.dumpRelation(result.relation);
+                break;
+            case ResultType.DATABASE:
+                const { schema } = result.database;
+                for (const relation of Object.values(schema)) {
+                    this.dumpRelation(relation);
                 }
-                console.table([...result.tuples()]);
-            } else {
-                console.log("Done");
-            }
-        } catch (e) {
-            console.log(e.message);
+                break;
+            case ResultType.SUCCESS:
+                if (result.success === true) {
+                    console.log("Done.");
+                } else {
+                    console.error(result.message);
+                }
+                break;
         }
         this.repl.prompt();
+    }
+
+    private dumpRelation(relation: Relation): void {
+        const { name, size } = relation;
+        if (!!name) {
+            console.log(`${name} (${size} tuples):`);
+        }
+        console.table([...relation.tuples()]);
     }
 }

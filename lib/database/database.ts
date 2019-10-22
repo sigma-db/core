@@ -44,15 +44,12 @@ export abstract class Database {
      * @param rel The name of the relation to retrieve
      */
     public relation(rel: string): Relation {
-        if (!!this.relations[rel]) {
+        if (rel in this.relations) {
             return this.relations[rel];
         } else {
             throw new Error(`Relation ${rel} does not exist in this database.`);
         }
     }
-
-    // public createOverlay(): Database {
-    // }
 
     /**
      * The current schema of the database
