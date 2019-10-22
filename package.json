@@ -7,7 +7,10 @@
     "email": "wigandtd@hu-berlin.de",
     "url": "https://dlw93.github.io"
   },
-  "repository": "github:dlw93/sigmaDB",
+  "repository": {
+    "type": "git",
+    "url": "https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=11.0.0"
