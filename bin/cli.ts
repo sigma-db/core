@@ -1,8 +1,14 @@
 ﻿import * as readline from "readline";
 import { Database, Engine, Query, ResultType, Program } from "../lib";
+import { TResult } from "../lib/engine/engine";
+
+interface CLIOptions {
+    script: Program;
+    relation: string;
+}
 
 export default class CLI {
-    public static start(database: Database, engine: Engine, script?: Program): void {
+    public static start(database: Database, engine: Engine, options?: CLIOptions): void {
         if (!database.isLogged) {
             console.warn("Working in a temporary database.");
             console.warn("Any data generated during this session will be lost upon closing the client!\n");
@@ -11,8 +17,10 @@ export default class CLI {
 
         const cli = new CLI(database, engine);
 
-        if (!!script) {
-            cli.onQuery(script)
+        if (!!options) {
+            const { script, relation } = options;
+            const result = engine.evaluate(script, database, relation);
+            cli.logResult(result);
         }
 
         cli.repl.prompt();
@@ -27,13 +35,13 @@ export default class CLI {
         });
         this.repl.on("close", () => this.database.close());
         this.repl.on("line", input => {
-            this.onQuery(Query.parse(input));
+            const result = this.engine.evaluate(Query.parse(input), this.database);
+            this.logResult(result);
             this.repl.prompt();
         });
     }
 
-    private onQuery(input: Query | Program) {
-        const result = this.engine.evaluate(input, this.database);
+    private logResult(result: TResult) {
         switch (result.type) {
             case ResultType.RELATION:
                 const { name, size } = result.relation;

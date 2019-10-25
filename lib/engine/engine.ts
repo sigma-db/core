@@ -1,5 +1,5 @@
 import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, IVariableValue, QueryType, TLiteral, TQuery, TupleType, ISelectQuery, ValueType, Query, Program } from "../query";
+import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TProgram, TQuery, TupleType, ValueType } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
@@ -7,10 +7,9 @@ import { Projection } from "./common";
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
 export const enum ResultType { RELATION, SUCCESS }
 
-export type TResult =
-    | { type: ResultType.RELATION, relation: Relation }
-    | { type: ResultType.SUCCESS, success: true }
-    | { type: ResultType.SUCCESS, success: false, message: string };
+type TSuccessResult = { type: ResultType.SUCCESS, success: true } | { type: ResultType.SUCCESS, success: false, message: string };
+type TRelationResult = { type: ResultType.RELATION, relation: Relation };
+export type TResult = TRelationResult | TSuccessResult;
 
 export abstract class Engine {
     /**
@@ -47,43 +46,52 @@ export abstract class Engine {
     ];
 
     /**
-     * Given a query's AST and a database, evaluates the query on the database
+     * Given a query and a database, evaluates the query on the database
      * and, depending on the query, returns a resulting relation or nothing.
      * @param query The query to evaluate
      * @param db The database to evaluate the query on
      */
-    public evaluate(query: Query | Program, db: Database): TResult {
-        if (query instanceof Program) {
-            const { statements } = query;
-            if (statements.length > 0) {
-                const overlay = db.createOverlay();
-                for (let i = 0; i < statements.length; i++) {
-                    try {
-                        const result = this.evaluateQuery(statements[i], overlay);
-                        if (!!result) {
-                            overlay.addOverlayRelation(result);
-                        }
-                    } catch (e) {
-                        return { type: ResultType.SUCCESS, success: false, message: e.message };
-                    }
-                }
-                return { type: ResultType.SUCCESS, success: true };
-            }
-        } else {
-            try {
-                const result = this.evaluateQuery(query.AST, db);
-                if (!!result) {
-                    return { type: ResultType.RELATION, relation: result };
-                } else {
-                    return { type: ResultType.SUCCESS, success: true };
-                }
-            } catch (e) {
-                return { type: ResultType.SUCCESS, success: false, message: e.message };
-            }
-        }
+    public evaluate(query: Query, db: Database): TResult;
+
+    /**
+     * Given a program and a database, evaluates the program on the database
+     * and, depending on whether a result relation is specified,
+     * returns the relation or only a success message.
+     * @param program The program to evaluate
+     * @param db The database to evaluate the query on
+     * @param relation The relation to return after evaluation of the program
+     */
+    public evaluate(program: Program, db: Database, relation: string): TResult;
+
+    public evaluate(query: Query | Program, db: Database, relation?: string): TResult {
+        return query instanceof Program ?
+            this.evaluateProgram(query.statements, db, relation) :
+            this.evaluateQuery(query.AST, db);
     }
 
-    private evaluateQuery(query: TQuery, db: Database): Relation | void {
+    private evaluateProgram(statements: TProgram, db: Database, relation: string): TResult {
+        if (statements.length > 0) {
+            const overlay = db.createOverlay();
+            for (let i = 0; i < statements.length; i++) {
+                const result = this.evaluateQuery(statements[i], overlay);
+                if (result.type === ResultType.RELATION) {
+                    try {
+                        overlay.addOverlayRelation(result.relation);
+                    } catch (e) {
+                        return this.error(e.message);
+                    }
+                } else if (result.success === false) {
+                    return result;
+                }
+            }
+            if (!!relation) {
+                return this.relation(overlay.relation(relation));
+            }
+        }
+        return this.success();
+    }
+
+    private evaluateQuery(query: TQuery, db: Database): TResult {
         switch (query.type) {
             case QueryType.INSERT: return this.onInsert(query, db);
             case QueryType.SELECT: return this.onSelect(query, db);
@@ -93,7 +101,7 @@ export abstract class Engine {
         }
     }
 
-    protected abstract onSelect(query: ISelectQuery, db: Database): Relation;
+    protected abstract onSelect(query: ISelectQuery, db: Database): TResult;
 
     protected resolve(cqatoms: IAtom[], schema: ISchema): [VariableSet, IResolvedAtom[]] {
         const valset = new VariableSet();
@@ -129,24 +137,38 @@ export abstract class Engine {
         return [valset, atoms];
     }
 
-    private onCreate(query: ICreateQuery, db: Database): void {
-        db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
+    private onCreate(query: ICreateQuery, db: Database): TSuccessResult {
+        try {
+            db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
+            return this.success();
+        } catch (e) {
+            return this.error(e.message);
+        }
     }
 
-    private onInsert(query: IInsertQuery, db: Database): void {
+    private onInsert(query: IInsertQuery, db: Database): TSuccessResult {
         let raw: TLiteral[];
         if (query.tuple.type === TupleType.UNNAMED) {
             const tuple = query.tuple;
             raw = tuple.values.map(v => v.value);
         } else {
             const { values } = query.tuple;
-            raw = db.relation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
+            try {
+                raw = db.relation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
+            } catch (e) {
+                return this.error(e.message);
+            }
         }
         const _tuple = Tuple.from(raw);
-        db.relation(query.rel).insert(_tuple);
+        try {
+            db.relation(query.rel).insert(_tuple);
+        } catch (e) {
+            return this.error(e.message);
+        }
+        return this.success();
     }
 
-    private onInfo(query: IInfoQuery, db: Database): Relation {
+    private onInfo(query: IInfoQuery, db: Database): TResult {
         let result: Relation;
         if (!query.rel) {
             result = Relation.create("Database Schema", Engine.DATABASE_SCHEMA);
@@ -156,17 +178,33 @@ export abstract class Engine {
             });
         } else {
             result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
-            db.relation(query.rel).schema.forEach(attr => {
-                const tuple = Tuple.create([attr.name, attr.type, attr.width]);
-                result.insert(tuple);
-            });
+            try {
+                db.relation(query.rel).schema.forEach(attr => {
+                    const tuple = Tuple.create([attr.name, attr.type, attr.width]);
+                    result.insert(tuple);
+                });
+            } catch (e) {
+                return this.error(e.message);
+            }
         }
-        return result.freeze();
+        return this.relation(result.freeze());
+    }
+
+    protected success(): TSuccessResult {
+        return { type: ResultType.SUCCESS, success: true };
+    }
+
+    protected error(message: string): TSuccessResult {
+        return { type: ResultType.SUCCESS, success: false, message };
+    }
+
+    protected relation(relation: Relation): TRelationResult {
+        return { type: ResultType.RELATION, relation };
     }
 }
 
 export class GeometricEngine extends Engine {
-    protected onSelect(query: ISelectQuery, db: Database): Relation {
+    protected onSelect(query: ISelectQuery, db: Database): TResult {
         const [vars, atoms] = super.resolve(query.body, db.schema);
         const queryAttrs = query.exports as Array<{ attr: string, value: IVariableValue }>;
         const schema = queryAttrs.map(({ attr, value }) => Attribute.create(attr, vars.get(value.name).type, vars.get(value.name).width));
@@ -176,6 +214,6 @@ export class GeometricEngine extends Engine {
         const projected = Projection.execute(joined, prjSchema);
         const result = Relation.from(query.name, schema, projected);
 
-        return result.freeze();
+        return super.relation(result.freeze());
     }
 }
