@@ -1,6 +1,6 @@
 export enum ListType { SORTED, UNSORTED }
 
-export type TList<T extends IComparable<T>> = IList<T, ListType>
+export type TList<T extends IComparable<T>> = IList<T, ListType>;
 
 export interface IComparable<T> {
     compareTo(other: T): number;

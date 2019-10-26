@@ -9,6 +9,11 @@ export const enum ResultType { RELATION, SUCCESS }
 
 type TSuccessResult = { type: ResultType.SUCCESS, success: true } | { type: ResultType.SUCCESS, success: false, message: string };
 type TRelationResult = { type: ResultType.RELATION, relation: Relation };
+
+const SUCCESS = (): TSuccessResult => ({ type: ResultType.SUCCESS, success: true });
+const ERROR = (message: string): TSuccessResult => ({ type: ResultType.SUCCESS, success: false, message });
+const RELATION = (relation: Relation): TRelationResult => ({ type: ResultType.RELATION, relation });
+
 export type TResult = TRelationResult | TSuccessResult;
 
 export abstract class Engine {
@@ -59,9 +64,9 @@ export abstract class Engine {
      * returns the relation or only a success message.
      * @param program The program to evaluate
      * @param db The database to evaluate the query on
-     * @param relation The relation to return after evaluation of the program
+     * @param outRelation The relation to return after evaluation of the program
      */
-    public evaluate(program: Program, db: Database, relation: string): TResult;
+    public evaluate(program: Program, db: Database, outRelation: string): TResult;
 
     public evaluate(query: Query | Program, db: Database, relation?: string): TResult {
         return query instanceof Program ?
@@ -69,7 +74,7 @@ export abstract class Engine {
             this.evaluateQuery(query.AST, db);
     }
 
-    private evaluateProgram(statements: TProgram, db: Database, relation: string): TResult {
+    private evaluateProgram(statements: TProgram, db: Database, outRelation: string): TResult {
         if (statements.length > 0) {
             const overlay = db.createOverlay();
             for (let i = 0; i < statements.length; i++) {
@@ -78,17 +83,17 @@ export abstract class Engine {
                     try {
                         overlay.addOverlayRelation(result.relation);
                     } catch (e) {
-                        return this.error(e.message);
+                        return ERROR(e.message);
                     }
                 } else if (result.success === false) {
                     return result;
                 }
             }
-            if (!!relation) {
-                return this.relation(overlay.relation(relation));
+            if (!!outRelation) {
+                return RELATION(overlay.relation(outRelation));
             }
         }
-        return this.success();
+        return SUCCESS();
     }
 
     private evaluateQuery(query: TQuery, db: Database): TResult {
@@ -140,9 +145,9 @@ export abstract class Engine {
     private onCreate(query: ICreateQuery, db: Database): TSuccessResult {
         try {
             db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
-            return this.success();
+            return SUCCESS();
         } catch (e) {
-            return this.error(e.message);
+            return ERROR(e.message);
         }
     }
 
@@ -156,16 +161,16 @@ export abstract class Engine {
             try {
                 raw = db.relation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
             } catch (e) {
-                return this.error(e.message);
+                return ERROR(e.message);
             }
         }
         const _tuple = Tuple.from(raw);
         try {
             db.relation(query.rel).insert(_tuple);
         } catch (e) {
-            return this.error(e.message);
+            return ERROR(e.message);
         }
-        return this.success();
+        return SUCCESS();
     }
 
     private onInfo(query: IInfoQuery, db: Database): TResult {
@@ -184,22 +189,10 @@ export abstract class Engine {
                     result.insert(tuple);
                 });
             } catch (e) {
-                return this.error(e.message);
+                return ERROR(e.message);
             }
         }
-        return this.relation(result.freeze());
-    }
-
-    protected success(): TSuccessResult {
-        return { type: ResultType.SUCCESS, success: true };
-    }
-
-    protected error(message: string): TSuccessResult {
-        return { type: ResultType.SUCCESS, success: false, message };
-    }
-
-    protected relation(relation: Relation): TRelationResult {
-        return { type: ResultType.RELATION, relation };
+        return RELATION(result.freeze());
     }
 }
 
@@ -214,6 +207,6 @@ export class GeometricEngine extends Engine {
         const projected = Projection.execute(joined, prjSchema);
         const result = Relation.from(query.name, schema, projected);
 
-        return super.relation(result.freeze());
+        return RELATION(result.freeze());
     }
 }

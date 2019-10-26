@@ -43,7 +43,7 @@ class ValueOutOfLimitsError extends SigmaError {
     }
 }
 
-class UnsupportedOperationException extends SigmaError {
+class UnsupportedOperationError extends SigmaError {
     constructor(msg: string) {
         super(msg);
     }
@@ -251,7 +251,7 @@ export abstract class Relation implements Iterable<Tuple> {
 
     private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {
         if (!(list instanceof SkipList)) {
-            throw new UnsupportedOperationException(`Function ${this.gaps.name} can only be executed if the relation is ordered.`);
+            throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is ordered.`);
         }
     }
 }
