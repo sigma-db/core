@@ -8,7 +8,7 @@ import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
 
 type List<T extends IComparable<T>> = ArrayList<T> | SkipList<T>;
-type RelationConstructor = new (...input: any[]) => BaseRelation;
+type RelationConstructor = new (...input: any[]) => RelationImpl;
 
 interface IOptions {
     sorted: boolean;
@@ -33,7 +33,7 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param options Options specifying the behaviour of the relation
      */
     public static create(name: string, schema: Attribute[], options = Relation.defaultOptions): Relation {
-        return BaseRelation.create(name, schema, { ...Relation.defaultOptions, ...options });
+        return RelationImpl.create(name, schema, { ...Relation.defaultOptions, ...options });
     }
 
     constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple>) { }
@@ -103,6 +103,20 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
+     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
+     */
+    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
+        for (const tuple of this._tuples) {
+            yield tuple.toObject(this._schema);
+        }
+    }
+
+    public *[Symbol.iterator](): IterableIterator<Tuple> {
+        yield* this._tuples;
+    }
+
+    /**
      * Returns a new relation sharing the state of this relation,
      * but with its past and future tuples being kept sorted.
      */
@@ -125,31 +139,15 @@ export abstract class Relation implements Iterable<Tuple> {
      * Infer any gaps surrounding the given tuple within the relation
      * @param tuple The tuple to probe
      */
-    public gaps(tuple: Tuple): Box[] {
-        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
-    }
-
-    /**
-     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
-     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
-     */
-    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
-        for (const tuple of this._tuples) {
-            yield tuple.toObject(this._schema);
-        }
-    }
-
-    public *[Symbol.iterator](): IterableIterator<Tuple> {
-        yield* this._tuples;
-    }
+    public abstract gaps(tuple: Tuple): Box[];
 }
 
-class BaseRelation extends Relation {
+class RelationImpl extends Relation {
     public static create(name: string, schema: Attribute[], options: Partial<IOptions>): Relation {
         const { throwsOnDuplicate, log, sorted, tuples } = options;
-        const _tuples = tuples || sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>();
+        const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
-        let inst = new BaseRelation(name, schema, _tuples);
+        let inst = new RelationImpl(name, schema, _tuples);
         if (!!log) {
             inst = inst.log(log);
         }
@@ -175,7 +173,7 @@ class BaseRelation extends Relation {
 
     public init(options: Partial<IOptions>): void { }
 
-    public sort(throwsOnDuplicate = true): BaseRelation {
+    public sort(throwsOnDuplicate = true): RelationImpl {
         if (this.isSorted) {
             return this;
         } else {
@@ -184,7 +182,7 @@ class BaseRelation extends Relation {
         }
     }
 
-    public log(log: TransactionLog): BaseRelation {
+    public log(log: TransactionLog): RelationImpl {
         if (this.isLogged) {
             return this;
         } else {
@@ -192,7 +190,7 @@ class BaseRelation extends Relation {
         }
     }
 
-    public static(): BaseRelation {
+    public static(): RelationImpl {
         if (this.isStatic) {
             return this;
         } else {
@@ -200,10 +198,18 @@ class BaseRelation extends Relation {
         }
     }
 
+    public gaps(tuple: Tuple): Box[] {
+        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
+    }
+
     private makeSorted<T extends RelationConstructor>(BaseRelation: T) {
         return class SortedRelation extends BaseRelation {
             protected readonly _tuples: SkipList<Tuple>;
             private _boundaries: [bigint[], bigint[], number[], bigint[]];
+
+            public get isSorted(): true {
+                return true;
+            }
 
             public init(options: Partial<IOptions>): void {
                 super.init(options);
@@ -271,6 +277,10 @@ class BaseRelation extends Relation {
             private readonly id = LoggedRelation.ID++;
             private _log: TransactionLog;
 
+            public get isLogged(): true {
+                return true;
+            }
+
             public init(options: Partial<IOptions>): void {
                 super.init(options);
                 const tupleSchema = this._schema.map(() => Type.BIGINT);
@@ -288,6 +298,10 @@ class BaseRelation extends Relation {
 
     private makeStatic<T extends RelationConstructor>(BaseRelation: T) {
         return class StaticRelation extends BaseRelation {
+            public get isStatic(): true {
+                return true;
+            }
+
             public insert(_tuple: Tuple): void {
                 throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");
             }
