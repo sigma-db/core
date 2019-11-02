@@ -1,104 +1,42 @@
-﻿import { Dyadic, SigmaError } from "../util";
-import { DuplicateKeyError, TList, SkipList, IList, ListType, ArrayList } from "../util/list";
+﻿import { Dyadic } from "../util";
+import { DuplicateKeyError, IComparable, SkipList, ArrayList } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
+import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError } from "./errors";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
 
-type TSchema = Attribute[];
+type List<T extends IComparable<T>> = ArrayList<T> | SkipList<T>;
+type RelationConstructor = new (...input: any[]) => BaseRelation;
 
 interface IOptions {
-    throwsOnDuplicate: boolean;
-    log: TransactionLog;
     sorted: boolean;
-}
-
-class DuplicateTupleError extends SigmaError {
-    constructor(private readonly _rel: string, private readonly _tuple: Tuple, private readonly _schema: Attribute[]) {
-        super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
-    }
-
-    public get relation(): string {
-        return this._rel;
-    }
-
-    public get tuple(): string {
-        return this._tuple.toString(this._schema);
-    }
-}
-
-class ValueOutOfLimitsError extends SigmaError {
-    constructor(_rel: string, _tuple: Tuple, _schema: Attribute[], _pos: number) {
-        const value = _schema[_pos].valueOf(_tuple[_pos]);
-        const tupleStr = _tuple.toString(_schema);
-        const attrName = _schema[_pos].name;
-        const { max, width } = _schema[_pos]
-
-        if (typeof value === "string") {
-            super(`Value ${value} in ${_rel}${tupleStr} exceeds maximum string length for attribute "${attrName}" (maximum is ${width}).`);
-        } else {
-            super(`Value ${value} in ${_rel}${tupleStr} exceeds value limit for attribute "${attrName}" (maximum is ${max}).`);
-        }
-    }
-}
-
-class UnsupportedOperationError extends SigmaError {
-    constructor(msg: string) {
-        super(msg);
-    }
+    log: TransactionLog;
+    tuples: List<Tuple>;
+    throwsOnDuplicate: boolean;
 }
 
 export abstract class Relation implements Iterable<Tuple> {
+    /**
+     * Default options to create the relation with if not specified differently by the user
+     */
+    private static readonly defaultOptions: Partial<IOptions> = {
+        throwsOnDuplicate: true,
+        sorted: true,
+    } as const;
+
     /**
      * Creates a new relation
      * @param name The name of the relation
      * @param schema The attributes of the relation
      * @param options Options specifying the behaviour of the relation
      */
-    public static create(name: string, schema: TSchema, options = Relation.defaultOptions): Relation {
-        const { throwsOnDuplicate, log, sorted } = { ...Relation.defaultOptions, ...options };
-        const tuples = sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>();
-
-        if (!!log) {
-            return new RelationLogged(name, schema, tuples, log);
-        } else {
-            return new RelationTemp(name, schema, tuples);
-        }
+    public static create(name: string, schema: Attribute[], options = Relation.defaultOptions): Relation {
+        return BaseRelation.create(name, schema, { ...Relation.defaultOptions, ...options });
     }
 
-    /**
-     * Creates a relation of the given name and schema from an existing set of tuples
-     * @param name The name of the new relation
-     * @param schema The schema of the new relation
-     * @param tuples The existing set of tuples to create the relation from
-     * @param options Options specifying the behaviour of the relation
-     */
-    public static from(name: string, schema: TSchema, tuples: TList<Tuple>, options = Relation.defaultOptions): Relation {
-        const rel = Relation.create(name, schema, options);
-        rel._tuples = tuples;
-        return rel;
-    }
-
-    /**
-     * Default options to create the relation with if not specified differently by the user
-     */
-    private static readonly defaultOptions: Partial<IOptions> = {
-        throwsOnDuplicate: true,
-        log: undefined,
-        sorted: true,
-    } as const;
-
-    private readonly _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
-
-    constructor(protected readonly _name: string, protected readonly _schema: TSchema, protected _tuples: TList<Tuple>) {
-        this._boundaries = [
-            _schema.map(attr => attr.min - 1n),
-            _schema.map(attr => attr.max),
-            _schema.map(attr => attr.exp),
-            _schema.map(attr => attr.wildcard),
-        ];
-    }
+    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple>) { }
 
     /**
      * The name of the relation
@@ -129,22 +67,19 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
-     * Whether this relation admits insertions to alter its tuple set
+     * Whether this relation's tuples are kept sorted
      */
-    public get isStatic(): boolean {
-        return this instanceof RelationStatic;
-    }
+    public abstract get isSorted(): boolean;
 
     /**
      * Whether changes to this relation's tuple set are logged on disk
      */
-    public get isLogged(): boolean {
-        return this instanceof RelationLogged;
-    }
+    public abstract get isLogged(): boolean;
 
-    public get isSorted(): boolean {
-        return this._tuples instanceof SkipList;
-    }
+    /**
+     * Whether this relation admits insertions to alter its tuple set
+     */
+    public abstract get isStatic(): boolean;
 
     /**
      * Inserts a new tuple into the relation
@@ -169,68 +104,34 @@ export abstract class Relation implements Iterable<Tuple> {
 
     /**
      * Returns a new relation sharing the state of this relation,
+     * but with its past and future tuples being kept sorted.
+     */
+    public abstract sort(throwsOnDuplicate?: boolean): Relation;
+
+    /**
+     * Returns a new relation sharing the state of this relation,
+     * but logging any future modifications.
+     * @param log The log to write modifications to.
+     */
+    public abstract log(log: TransactionLog): Relation;
+
+    /**
+     * Returns a new relation sharing the state of this relation,
      * but not allowing further modifications of its tuple set.
      */
-    public freeze(): Relation {
-        return new RelationStatic(this._name, this._schema, this._tuples);
-    }
+    public abstract static(): Relation;
 
     /**
      * Infer any gaps surrounding the given tuple within the relation
      * @param tuple The tuple to probe
      */
     public gaps(tuple: Tuple): Box[] {
-        this.assertSorted(this._tuples);
-
-        const gaps: Box[] = [];
-        const [min, max, exp, wildcard] = this._boundaries;
-        const [pred, succ] = this._tuples.find(tuple);
-
-        if (!pred && !succ) {
-            // empty relation --> return box covering entire (sub)space
-            gaps.push(Box.from(wildcard));
-        } else if (!succ) {
-            // probe tuple is behind last element in relation
-            for (let j = 0; j < this.arity; j++) {
-                const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
-                const back = wildcard.slice(j + 1);
-                Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
-            }
-        } else if (succ.compareTo(tuple) === 0) {
-            // probe tuple is in relation --> return empty box set
-        } else if (!pred) {
-            // probe tuple is before first element in relation
-            for (let j = 0; j < this.arity; j++) {
-                const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
-                const back = wildcard.slice(j + 1);
-                Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
-            }
-        } else {
-            // probe tuple is between pred and succ
-            const s = succ.findIndex((_, idx) => pred[idx] !== succ[idx]);
-
-            for (let j = s + 1; j < this.arity; j++) {
-                const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
-                const back = wildcard.slice(j + 1);
-                Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
-            }
-
-            for (let j = s + 1; j < this.arity; j++) {
-                const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
-                const back = wildcard.slice(j + 1);
-                Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
-            }
-
-            const front = pred.slice(0, s).map((z, i) => z ^ max[i]);
-            const back = wildcard.slice(s + 1);
-            Dyadic.intervals(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
-        }
-
-        return gaps;
+        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
     }
 
     /**
      * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
      */
     public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
         for (const tuple of this._tuples) {
@@ -241,49 +142,155 @@ export abstract class Relation implements Iterable<Tuple> {
     public *[Symbol.iterator](): IterableIterator<Tuple> {
         yield* this._tuples;
     }
+}
 
-    private _gaps(tuple: Tuple, dim: number, start: bigint, end: bigint): Box[] {
-        const [, max, exp, wildcard] = this._boundaries;
-        const front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
-        const back = wildcard.slice(dim + 1);
-        return Dyadic.intervals(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
+class BaseRelation extends Relation {
+    public static create(name: string, schema: Attribute[], options: Partial<IOptions>): Relation {
+        const { throwsOnDuplicate, log, sorted, tuples } = options;
+        const _tuples = tuples || sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>();
+
+        let inst = new BaseRelation(name, schema, _tuples);
+        if (!!log) {
+            inst = inst.log(log);
+        }
+        if (sorted) {
+            inst = inst.sort();
+        }
+
+        inst.init(options);
+        return inst;
     }
 
-    private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {
-        if (!(list instanceof SkipList)) {
-            throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is ordered.`);
+    public get isSorted(): boolean {
+        return false;
+    }
+
+    public get isLogged(): boolean {
+        return false;
+    }
+
+    public get isStatic(): boolean {
+        return false;
+    }
+
+    public init(options: Partial<IOptions>): void { }
+
+    public sort(throwsOnDuplicate = true): BaseRelation {
+        if (this.isSorted) {
+            return this;
+        } else {
+            const _tuples = SkipList.from(this._tuples, throwsOnDuplicate);
+            return new (this.makeSorted(this.constructor as RelationConstructor))(this._name, this._schema, _tuples);
         }
     }
-}
 
-class RelationTemp extends Relation {
-}
-
-class RelationStatic extends Relation {
-    public insert(_tuple: Tuple): void {
-        throw new Error("Insertion into a static relation is not permitted");
-    }
-}
-
-type TInsertTransaction = Array<bigint>;
-
-class RelationLogged extends Relation {
-    private static ID = 1;
-
-    private readonly log: TransactionLog;
-    private readonly id: number;
-
-    constructor(name: string, schema: Attribute[], tuples: TList<Tuple>, log: TransactionLog) {
-        super(name, schema, tuples);
-        const tupleSchema = schema.map(() => Type.BIGINT);
-        const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
-        this.log = log;
-        this.id = RelationLogged.ID++;
-        this.log.handle<TInsertTransaction>(this.id, logSchema, tx => super.insert(Tuple.from(tx)));
+    public log(log: TransactionLog): BaseRelation {
+        if (this.isLogged) {
+            return this;
+        } else {
+            return new (this.makeLogged(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+        }
     }
 
-    public insert(tuple: Tuple): void {
-        super.insert(tuple);
-        this.log.write<TInsertTransaction>(this.id, Array.from(tuple));
+    public static(): BaseRelation {
+        if (this.isStatic) {
+            return this;
+        } else {
+            return new (this.makeStatic(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+        }
+    }
+
+    private makeSorted<T extends RelationConstructor>(BaseRelation: T) {
+        return class SortedRelation extends BaseRelation {
+            protected readonly _tuples: SkipList<Tuple>;
+            private _boundaries: [bigint[], bigint[], number[], bigint[]];
+
+            public init(options: Partial<IOptions>): void {
+                super.init(options);
+                this._boundaries = [
+                    this._schema.map(attr => attr.min - 1n),
+                    this._schema.map(attr => attr.max),
+                    this._schema.map(attr => attr.exp),
+                    this._schema.map(attr => attr.wildcard),
+                ];
+            }
+
+            public gaps(tuple: Tuple): Box[] {
+                const gaps: Box[] = [];
+                const [min, max, exp, wildcard] = this._boundaries;
+                const [pred, succ] = this._tuples.find(tuple);
+
+                if (!pred && !succ) {
+                    // empty relation --> return box covering entire (sub)space
+                    gaps.push(Box.from(wildcard));
+                } else if (!succ) {
+                    // probe tuple is behind last element in relation
+                    for (let j = 0; j < this.arity; j++) {
+                        const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
+                        const back = wildcard.slice(j + 1);
+                        Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                    }
+                } else if (succ.compareTo(tuple) === 0) {
+                    // probe tuple is in relation --> return empty box set
+                } else if (!pred) {
+                    // probe tuple is before first element in relation
+                    for (let j = 0; j < this.arity; j++) {
+                        const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
+                        const back = wildcard.slice(j + 1);
+                        Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                    }
+                } else {
+                    // probe tuple is between pred and succ
+                    const s = succ.findIndex((_, idx) => pred[idx] !== succ[idx]);
+
+                    for (let j = s + 1; j < this.arity; j++) {
+                        const front = pred.slice(0, j).map((z, i) => z ^ max[i]);
+                        const back = wildcard.slice(j + 1);
+                        Dyadic.intervals(pred[j], max[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                    }
+
+                    for (let j = s + 1; j < this.arity; j++) {
+                        const front = succ.slice(0, j).map((z, i) => z ^ max[i]);
+                        const back = wildcard.slice(j + 1);
+                        Dyadic.intervals(min[j], succ[j], exp[j]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                    }
+
+                    const front = pred.slice(0, s).map((z, i) => z ^ max[i]);
+                    const back = wildcard.slice(s + 1);
+                    Dyadic.intervals(pred[s], succ[s], exp[s]).forEach(i => gaps.push(Box.of(...front, i, ...back)));
+                }
+
+                return gaps;
+            }
+        }
+    }
+
+    private makeLogged<T extends RelationConstructor>(BaseRelation: T) {
+        return class LoggedRelation extends BaseRelation {
+            private static ID = 1;
+            private readonly id = LoggedRelation.ID++;
+            private _log: TransactionLog;
+
+            public init(options: Partial<IOptions>): void {
+                super.init(options);
+                const tupleSchema = this._schema.map(() => Type.BIGINT);
+                const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
+                this._log = options.log;
+                this._log.handle(this.id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
+            }
+
+            public insert(tuple: Tuple): void {
+                super.insert(tuple);
+                this._log.write(this.id, Array.from(tuple));
+            }
+        }
+    }
+
+    private makeStatic<T extends RelationConstructor>(BaseRelation: T) {
+        return class StaticRelation extends BaseRelation {
+            public insert(_tuple: Tuple): void {
+                throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");
+            }
+        }
     }
 }

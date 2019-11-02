@@ -1,6 +1,6 @@
-import { IComparable, IList, ListType } from "./list";
+import { IComparable } from "./comparable";
 
-export class ArrayList<T extends IComparable<T>> implements IList<T, ListType.UNSORTED> {
+export class ArrayList<T extends IComparable<T>> {
     private readonly _data: T[];
 
     public constructor() {

@@ -192,7 +192,7 @@ export abstract class Engine {
                 return ERROR(e.message);
             }
         }
-        return RELATION(result.freeze());
+        return RELATION(result.static());
     }
 }
 
@@ -205,8 +205,8 @@ export class GeometricEngine extends Engine {
 
         const joined = TetrisJoin.execute(atoms, vars);
         const projected = Projection.execute(joined, prjSchema);
-        const result = Relation.from(query.name, schema, projected);
+        const result = Relation.create(query.name, schema, { tuples: projected });
 
-        return RELATION(result.freeze());
+        return RELATION(result.static());
     }
 }
