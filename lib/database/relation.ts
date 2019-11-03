@@ -147,62 +147,20 @@ class RelationImpl extends Relation {
         const { throwsOnDuplicate, log, sorted, tuples } = options;
         const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
-        let inst = new RelationImpl(name, schema, _tuples);
+        let RelationConstructor = RelationImpl;
         if (!!log) {
-            inst = inst.log(log);
+            RelationConstructor = RelationImpl.logged(RelationConstructor);
         }
         if (sorted) {
-            inst = inst.sort();
+            RelationConstructor = RelationImpl.sorted(RelationConstructor);
         }
 
+        const inst = new RelationConstructor(name, schema, _tuples);
         inst.init(options);
         return inst;
     }
 
-    public get isSorted(): boolean {
-        return false;
-    }
-
-    public get isLogged(): boolean {
-        return false;
-    }
-
-    public get isStatic(): boolean {
-        return false;
-    }
-
-    public init(options: Partial<IOptions>): void { }
-
-    public sort(throwsOnDuplicate = true): RelationImpl {
-        if (this.isSorted) {
-            return this;
-        } else {
-            const _tuples = SkipList.from(this._tuples, throwsOnDuplicate);
-            return new (this.makeSorted(this.constructor as RelationConstructor))(this._name, this._schema, _tuples);
-        }
-    }
-
-    public log(log: TransactionLog): RelationImpl {
-        if (this.isLogged) {
-            return this;
-        } else {
-            return new (this.makeLogged(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
-        }
-    }
-
-    public static(): RelationImpl {
-        if (this.isStatic) {
-            return this;
-        } else {
-            return new (this.makeStatic(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
-        }
-    }
-
-    public gaps(tuple: Tuple): Box[] {
-        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
-    }
-
-    private makeSorted<T extends RelationConstructor>(BaseRelation: T) {
+    private static sorted<T extends RelationConstructor>(BaseRelation: T) {
         return class SortedRelation extends BaseRelation {
             protected readonly _tuples: SkipList<Tuple>;
             private _boundaries: [bigint[], bigint[], number[], bigint[]];
@@ -271,7 +229,7 @@ class RelationImpl extends Relation {
         }
     }
 
-    private makeLogged<T extends RelationConstructor>(BaseRelation: T) {
+    private static logged<T extends RelationConstructor>(BaseRelation: T) {
         return class LoggedRelation extends BaseRelation {
             private static ID = 1;
             private readonly id = LoggedRelation.ID++;
@@ -296,7 +254,7 @@ class RelationImpl extends Relation {
         }
     }
 
-    private makeStatic<T extends RelationConstructor>(BaseRelation: T) {
+    private static static<T extends RelationConstructor>(BaseRelation: T) {
         return class StaticRelation extends BaseRelation {
             public get isStatic(): true {
                 return true;
@@ -306,5 +264,48 @@ class RelationImpl extends Relation {
                 throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");
             }
         }
+    }
+
+    public get isSorted(): boolean {
+        return false;
+    }
+
+    public get isLogged(): boolean {
+        return false;
+    }
+
+    public get isStatic(): boolean {
+        return false;
+    }
+
+    public init(options: Partial<IOptions>): void { }
+
+    public sort(throwsOnDuplicate = true): RelationImpl {
+        if (this.isSorted) {
+            return this;
+        } else {
+            const _tuples = SkipList.from(this._tuples, throwsOnDuplicate);
+            return new (RelationImpl.sorted(this.constructor as RelationConstructor))(this._name, this._schema, _tuples);
+        }
+    }
+
+    public log(log: TransactionLog): RelationImpl {
+        if (this.isLogged) {
+            return this;
+        } else {
+            return new (RelationImpl.logged(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+        }
+    }
+
+    public static(): RelationImpl {
+        if (this.isStatic) {
+            return this;
+        } else {
+            return new (RelationImpl.static(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+        }
+    }
+
+    public gaps(tuple: Tuple): Box[] {
+        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
     }
 }
