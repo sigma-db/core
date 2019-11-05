@@ -1,5 +1,5 @@
 ﻿import { Dyadic } from "../util";
-import { DuplicateKeyError, IComparable, SkipList, ArrayList } from "../util/list";
+import { DuplicateKeyError, SkipList, ArrayList, List } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
 import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError } from "./errors";
@@ -7,13 +7,12 @@ import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
 
-type List<T extends IComparable<T>> = ArrayList<T> | SkipList<T>;
 type RelationConstructor = new (...input: any[]) => RelationImpl;
 
 interface IOptions {
     sorted: boolean;
     log: TransactionLog;
-    tuples: List<Tuple>;
+    tuples: List<Tuple, boolean>;
     throwsOnDuplicate: boolean;
 }
 
@@ -36,7 +35,7 @@ export abstract class Relation implements Iterable<Tuple> {
         return RelationImpl.create(name, schema, { ...Relation.defaultOptions, ...options });
     }
 
-    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple>) { }
+    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple, boolean>) { }
 
     /**
      * The name of the relation
@@ -149,10 +148,10 @@ class RelationImpl extends Relation {
 
         let RelationConstructor = RelationImpl;
         if (!!log) {
-            RelationConstructor = RelationImpl.logged(RelationConstructor);
+            RelationConstructor = RelationImpl.logged();
         }
         if (sorted) {
-            RelationConstructor = RelationImpl.sorted(RelationConstructor);
+            RelationConstructor = RelationImpl.sorted();
         }
 
         const inst = new RelationConstructor(name, schema, _tuples);
@@ -160,9 +159,9 @@ class RelationImpl extends Relation {
         return inst;
     }
 
-    private static sorted<T extends RelationConstructor>(BaseRelation: T) {
-        return class SortedRelation extends BaseRelation {
-            protected readonly _tuples: SkipList<Tuple>;
+    private static sorted<T extends RelationConstructor>(this: T) {
+        return class SortedRelation extends this {
+            protected readonly _tuples: List<Tuple, true>;
             private _boundaries: [bigint[], bigint[], number[], bigint[]];
 
             public get isSorted(): true {
@@ -229,8 +228,8 @@ class RelationImpl extends Relation {
         }
     }
 
-    private static logged<T extends RelationConstructor>(BaseRelation: T) {
-        return class LoggedRelation extends BaseRelation {
+    private static logged<T extends RelationConstructor>(this: T) {
+        return class LoggedRelation extends this {
             private static ID = 1;
             private readonly id = LoggedRelation.ID++;
             private _log: TransactionLog;
@@ -254,8 +253,8 @@ class RelationImpl extends Relation {
         }
     }
 
-    private static static<T extends RelationConstructor>(BaseRelation: T) {
-        return class StaticRelation extends BaseRelation {
+    private static static<T extends RelationConstructor>(this: T) {
+        return class StaticRelation extends this {
             public get isStatic(): true {
                 return true;
             }
@@ -285,7 +284,7 @@ class RelationImpl extends Relation {
             return this;
         } else {
             const _tuples = SkipList.from(this._tuples, throwsOnDuplicate);
-            return new (RelationImpl.sorted(this.constructor as RelationConstructor))(this._name, this._schema, _tuples);
+            return new ((this.constructor as typeof RelationImpl).sorted())(this._name, this._schema, _tuples);
         }
     }
 
@@ -293,7 +292,7 @@ class RelationImpl extends Relation {
         if (this.isLogged) {
             return this;
         } else {
-            return new (RelationImpl.logged(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+            return new ((this.constructor as typeof RelationImpl).logged())(this._name, this._schema, this._tuples);
         }
     }
 
@@ -301,7 +300,7 @@ class RelationImpl extends Relation {
         if (this.isStatic) {
             return this;
         } else {
-            return new (RelationImpl.static(this.constructor as RelationConstructor))(this._name, this._schema, this._tuples);
+            return new ((this.constructor as typeof RelationImpl).static())(this._name, this._schema, this._tuples);
         }
     }
 

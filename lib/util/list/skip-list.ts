@@ -1,7 +1,5 @@
 ﻿import { IComparable } from "./comparable";
-import { ArrayList } from "./array-list";
-
-type List<T extends IComparable<T>> = ArrayList<T> | SkipList<T>;
+import { List } from "./list";
 
 class Node<T extends IComparable<T>> {
     public key: T;
@@ -23,13 +21,13 @@ export class DuplicateKeyError<T> extends Error {
     }
 }
 
-export class SkipList<T extends IComparable<T>> {
+export class SkipList<T extends IComparable<T>> implements List<T, true> {
     private readonly head: Node<T>;
     private readonly tail: Node<T>;
     private level: number;
     private _size: number;
 
-    public static from<T extends IComparable<T>>(src: List<T>, throwsOnDuplicate = false): SkipList<T> {
+    public static from<T extends IComparable<T>>(src: List<T, boolean>, throwsOnDuplicate = false): SkipList<T> {
         const result = new SkipList<T>(4, 0.25, throwsOnDuplicate);
         for (const el of src) {
             result.insert(el);

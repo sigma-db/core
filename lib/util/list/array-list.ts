@@ -1,18 +1,19 @@
 import { IComparable } from "./comparable";
+import { List } from "./list";
 
-export class ArrayList<T extends IComparable<T>> {
-    private readonly _data: T[];
+export class ArrayList<T extends IComparable<T>> implements List<T, false> {
+    private readonly data: T[];
 
     public constructor() {
-        this._data = new Array<T>();
+        this.data = new Array<T>();
     }
 
     public get size(): number {
-        return this._data.length;
+        return this.data.length;
     }
 
     public find(key: T): T {
-        for (const c of this._data) {
+        for (const c of this.data) {
             if (c.compareTo(key) === 0) {
                 return c;
             }
@@ -20,15 +21,10 @@ export class ArrayList<T extends IComparable<T>> {
     }
 
     public insert(key: T): void {
-        this._data.push(key);
-    }
-
-    public sort(comparator: (a: T, b: T) => number): ArrayList<T> {
-        this._data.sort(comparator);
-        return this;
+        this.data.push(key);
     }
 
     public *[Symbol.iterator](): IterableIterator<T> {
-        yield* this._data;
+        yield* this.data;
     }
 }

@@ -1,4 +1,4 @@
-import { Attribute, Database, DataType, ISchema, Relation, Tuple } from "../database";
+import { Attribute, Database, DataType, DatabaseSchema, Relation, Tuple } from "../database";
 import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TProgram, TQuery, TupleType, ValueType } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
@@ -76,12 +76,12 @@ export abstract class Engine {
 
     private evaluateProgram(statements: TProgram, db: Database, outRelation: string): TResult {
         if (statements.length > 0) {
-            const overlay = db.createOverlay();
+            const overlay = db.overlay();
             for (let i = 0; i < statements.length; i++) {
                 const result = this.evaluateQuery(statements[i], overlay);
                 if (result.type === ResultType.RELATION) {
                     try {
-                        overlay.addOverlayRelation(result.relation);
+                        overlay.addRelation(result.relation);
                     } catch (e) {
                         return ERROR(e.message);
                     }
@@ -90,7 +90,7 @@ export abstract class Engine {
                 }
             }
             if (!!outRelation) {
-                return RELATION(overlay.relation(outRelation));
+                return RELATION(overlay.getRelation(outRelation));
             }
         }
         return SUCCESS();
@@ -108,7 +108,7 @@ export abstract class Engine {
 
     protected abstract onSelect(query: ISelectQuery, db: Database): TResult;
 
-    protected resolve(cqatoms: IAtom[], schema: ISchema): [VariableSet, IResolvedAtom[]] {
+    protected resolve(cqatoms: IAtom[], schema: DatabaseSchema): [VariableSet, IResolvedAtom[]] {
         const valset = new VariableSet();
         const atoms = cqatoms.map(({ rel, tuple }) => {
             if (tuple.type === TupleType.UNNAMED) {
@@ -159,14 +159,14 @@ export abstract class Engine {
         } else {
             const { values } = query.tuple;
             try {
-                raw = db.relation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
+                raw = db.getRelation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
             } catch (e) {
                 return ERROR(e.message);
             }
         }
         const _tuple = Tuple.from(raw);
         try {
-            db.relation(query.rel).insert(_tuple);
+            db.getRelation(query.rel).insert(_tuple);
         } catch (e) {
             return ERROR(e.message);
         }
@@ -184,7 +184,7 @@ export abstract class Engine {
         } else {
             result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             try {
-                db.relation(query.rel).schema.forEach(attr => {
+                db.getRelation(query.rel).schema.forEach(attr => {
                     const tuple = Tuple.create([attr.name, attr.type, attr.width]);
                     result.insert(tuple);
                 });

@@ -3,28 +3,63 @@ import { Relation } from "./relation";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 
-export interface ISchema {
+export interface DatabaseSchema {
     [name: string]: Relation;
 }
 
-export abstract class Database {
+export class Database {
     /**
      * Opens an existing database stored at the specified location
      * or creates a new one if it does not yet exist.
      */
     public static open(path: string): Database {
         const log = TransactionLog.open(path);
-        return new DatabaseLogged(log);
+        return new LoggedDatabase(log);
     }
 
     /**
      * Creates a temporary database with no logging to disk.
      */
     public static temp(): Database {
-        return new DatabaseTemp();
+        return new Database();
     }
 
-    protected readonly relations: { [name: string]: Relation } = {};
+    protected readonly relations: DatabaseSchema = {};
+
+    protected constructor() { }
+
+    /**
+     * Whether modification to this instance are logged
+     */
+    public get isLogged(): boolean {
+        return this instanceof LoggedDatabase;
+    }
+
+    /**
+     * Whether this instance overlays another database object
+     */
+    public get isOverlay(): boolean {
+        return this instanceof OverlayDatabase;
+    }
+
+    /**
+     * The current schema of the database
+     */
+    public get schema(): DatabaseSchema {
+        return Object.assign({}, this.relations);
+    }
+
+    /**
+     * Adds an existing relation to the database
+     * @param rel The relation object
+     */
+    public addRelation(rel: Relation): void {
+        if (!this.hasRelation(rel.name)) {
+            this.relations[rel.name] = rel;
+        } else {
+            throw new Error(`Relation "${name}" already exists.`);
+        }
+    }
 
     /**
      * Creates a new relation
@@ -32,64 +67,45 @@ export abstract class Database {
      * @param schema The attributes of the relation
      */
     public createRelation(name: string, schema: Attribute[]): void {
-        if (!this.relations[name]) {
-            this.relations[name] = this.relationConstructor(name, schema);
-        } else {
-            throw new Error(`Relation "${name}" already exists.`);
-        }
+        this.addRelation(this.relationConstructor(name, schema));
     }
 
-    public createOverlay(): DatabaseOverlay {
-        return DatabaseOverlay.create(this);
+    /**
+     * Checks whether a relation of name `rel` already exists on this database.
+     * @param name The relation name to check
+     */
+    public hasRelation(name: string): boolean {
+        return name in this.relations;
     }
 
     /**
      * Access a given relation
-     * @param rel The name of the relation to retrieve
+     * @param name The name of the relation to retrieve
      */
-    public relation(rel: string): Relation {
-        if (rel in this.relations) {
-            return this.relations[rel];
+    public getRelation(name: string): Relation {
+        if (name in this.relations) {
+            return this.relations[name];
         } else {
-            throw new Error(`Relation ${rel} does not exist in this database.`);
+            throw new Error(`Relation ${name} does not exist in this database.`);
         }
     }
 
-    public hasRelation(rel: string): boolean {
-        return rel in this.relations;
-    }
-
     /**
-     * The current schema of the database
+     * Creates an overlay on top of this database, sharing the same state,
+     * but with any modification made to the overlay not being applied to the underlying database.
      */
-    public get schema(): ISchema {
-        return Object.keys(this.relations).reduce((S, R) => {
-            S[R] = this.relations[R];
-            return S;
-        }, {});
-    }
-
-    /**
-     * Whether modification to this instance are logged or not
-     */
-    public get isLogged(): boolean {
-        return this instanceof DatabaseLogged;
+    public overlay(): OverlayDatabase {
+        return new OverlayDatabase(this);
     }
 
     /**
      * Closes the database
      */
-    public abstract close(): void;
-
-    protected abstract relationConstructor(name: string, schema: Attribute[]): Relation;
-}
-
-class DatabaseTemp extends Database {
-    public close() { }
+    public close(): void { }
 
     protected relationConstructor(name: string, schema: Attribute[]): Relation {
         return Relation.create(name, schema);
-    }
+    };
 }
 
 interface ICreateTransaction {
@@ -97,7 +113,7 @@ interface ICreateTransaction {
     attrs: IAttributeLike[];
 }
 
-class DatabaseLogged extends Database {
+class LoggedDatabase extends Database {
     private static readonly CREATION_ID = 0;
     private static readonly CREATION_SCHEMA = ObjectSchema.create(Type.OBJECT({
         name: Type.STRING,
@@ -110,7 +126,7 @@ class DatabaseLogged extends Database {
 
     constructor(private readonly log: TransactionLog) {
         super();
-        log.handle<ICreateTransaction>(DatabaseLogged.CREATION_ID, DatabaseLogged.CREATION_SCHEMA, tx => {
+        log.handle<ICreateTransaction>(LoggedDatabase.CREATION_ID, LoggedDatabase.CREATION_SCHEMA, tx => {
             const { name, attrs } = tx;
             const _attrs = attrs.map(attr => Attribute.from(attr));
             super.createRelation(name, _attrs);
@@ -120,7 +136,7 @@ class DatabaseLogged extends Database {
 
     public createRelation(name: string, schema: Attribute[]): void {
         super.createRelation(name, schema);
-        this.log.write<ICreateTransaction>(DatabaseLogged.CREATION_ID, { name, attrs: schema });
+        this.log.write<ICreateTransaction>(LoggedDatabase.CREATION_ID, { name, attrs: schema });
     }
 
     public close(): void {
@@ -132,46 +148,22 @@ class DatabaseLogged extends Database {
     }
 }
 
-class DatabaseOverlay extends Database {
-    public static create(parent: Database): DatabaseOverlay {
-        return new DatabaseOverlay(parent);
-    }
-
-    protected readonly relations: { [name: string]: Relation } = {};
-
-    private constructor(private readonly parent: Database) {
+class OverlayDatabase extends Database {
+    constructor(private readonly parent: Database) {
         super();
     }
 
-    public createRelation(name: string, schema: Attribute[]): void {
-        if (!this.hasRelation(name) && !this.parent.hasRelation(name)) {
-            this.relations[name] = Relation.create(name, schema);
+    public getRelation(name: string): Relation {
+        if (name in this.relations) {   // this db contains the given relation
+            return this.relations[name];
+        } else if (this.parent.hasRelation(name)) {     // an ancestor contains the given relation
+            return this.parent.getRelation(name);
         } else {
-            throw new Error(`Relation "${name}" already exists.`);
+            throw new Error(`Relation ${name} does not exist in this database.`);
         }
     }
 
-    public addOverlayRelation(rel: Relation) {
-        if (!this.hasRelation(rel.name) && !this.parent.hasRelation(rel.name)) {
-            this.relations[rel.name] = rel;
-        } else {
-            throw new Error(`Relation "${rel.name}" already exists.`);
-        }
-    }
-
-    public relation(rel: string): Relation {
-        if (this.hasRelation(rel)) {
-            return this.relations[rel];
-        } else if (this.parent.hasRelation(rel)) {
-            return this.parent.relation(rel);
-        } else {
-            throw new Error(`Relation ${rel} does not exist in this database.`);
-        }
-    }
-
-    public close(): void { }
-
-    protected relationConstructor(name: string, schema: Attribute[]): Relation {
-        throw new Error("Method not implemented.");
+    public hasRelation(name: string): boolean {
+        return super.hasRelation(name) || this.parent.hasRelation(name);
     }
 }
