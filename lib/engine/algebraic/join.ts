@@ -49,7 +49,7 @@ export class SelingerJoin {
     }
 
     private getPred(a: string[], b: string[]): TPredicate {
-        const result = [];
+        const result = new Array<[number, number]>();
         for (let i = 0; i < a.length; i++) {
             const pos = b.indexOf(a[i]);
             if (pos >= 0) {

@@ -1,5 +1,7 @@
 export abstract class SigmaError implements Error {
-    name: string;
+    public get name(): string {
+        return this.constructor.name;
+    }
 
     constructor(public message: string) { }
 }
