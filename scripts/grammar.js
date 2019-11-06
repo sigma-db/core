@@ -1,6 +1,6 @@
-﻿const peg = require("pegjs");
-const fs = require("fs");
+﻿const fs = require("fs");
 const path = require("path");
+const peg = require("pegjs");
 
 const src = process.argv[2];    // the directory to read the grammars from
 const dst = process.argv[3];    // the directory to put the generated parsers in

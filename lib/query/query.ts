@@ -1,6 +1,6 @@
 ﻿import { parse as parseCQ } from "./parsers/cq";
 import { parse as parseSQL } from "./parsers/sql";
-import { TQuery, TProgram } from "./query-type";
+import { TQuery } from "./query-type";
 
 export const enum QueryLang { CQ, SQL }
 
@@ -41,7 +41,7 @@ export class Program {
         }
     }
 
-    public get statements(): TProgram {
-        return this._stmts;
+    public get statements(): IterableIterator<TQuery> {
+        return this._stmts.values();    // TODO: Replace by manually optimised parser
     }
 }

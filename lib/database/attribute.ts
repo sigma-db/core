@@ -154,7 +154,6 @@ class StringAttribute extends Attribute {
             codes.push(Number(value & 0xFFn));
             value >>= 8n;
         }
-        const valueStr = String.fromCharCode(...codes.reverse());
-        return `"${valueStr}"`;
+        return String.fromCharCode(...codes.reverse());
     }
 }

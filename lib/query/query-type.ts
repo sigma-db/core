@@ -61,4 +61,3 @@ export interface IInfoQuery {
 }
 
 export type TQuery = ICreateQuery | IInsertQuery | ISelectQuery | IInfoQuery;
-export type TProgram = TQuery[];

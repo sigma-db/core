@@ -1,5 +1,5 @@
 import { IComparable } from "../util/list";
-import { Attribute } from "./attribute";
+import { Attribute, DataType } from "./attribute";
 
 export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<Tuple> {
     readonly [n: number]: bigint;
@@ -60,7 +60,10 @@ export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<T
      * @param schema The schema to be used to format the tuple's attributes.
      */
     public toString(schema: Attribute[]): string {
-        const result = schema.map((attr, idx) => attr.valueOf(this[idx]));
+        const result = schema.map((attr, idx) => {
+            const val = attr.valueOf(this[idx]);
+            return attr.type === DataType.STRING ? `"${val}"` : val;
+        });
         return `(${result.join(", ")})`;
     }
 

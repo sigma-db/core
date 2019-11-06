@@ -1,20 +1,7 @@
-export enum ListType { SORTED, UNSORTED }
+import { IComparable } from "./comparable";
 
-export type TList<T extends IComparable<T>> = IList<T, ListType>
-
-export interface IComparable<T> {
-    compareTo(other: T): number;
-}
-
-export interface IList<S extends IComparable<S>, T extends ListType> extends Iterable<S> {
-    /**
-     * The number of entries in the list
-     */
+export interface List<T extends IComparable<T>, U extends boolean> extends Iterable<T> {
     size: number;
-
-    find(key: S): T extends ListType.SORTED ? [S, S] : S;
-
-    insert(key: S): void;
-
-    sort(comparator: ((a: S, b: S) => number)): IList<S, T>;
+    find(key: T): U extends true ? [T, T] : T;
+    insert(key: T): void;
 }

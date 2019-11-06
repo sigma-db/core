@@ -1,103 +1,68 @@
-﻿import { Dyadic, SigmaError } from "../util";
-import { DuplicateKeyError, TList, SkipList, IList, ListType, ArrayList } from "../util/list";
+﻿import { Dyadic } from "../util";
+import { DuplicateKeyError, SkipList, ArrayList, List } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
+import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError } from "./errors";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
 
-type TSchema = Attribute[];
+interface RelationConstructor {
+    new(...input: any[]): _Relation;
+}
 
-interface IOptions {
-    throwsOnDuplicate: boolean;
-    log: TransactionLog;
+interface Mixin {
+    /**
+     * Transforms a given Relation type `BaseRelation` into a type inheriting
+     * from `BaseRelation` and probably adding or overwriting some functions.
+     * @param BaseRelation The Relation type to extend
+     */
+    <T extends RelationConstructor>(BaseRelation: T): T;
+}
+
+interface Options {
     sorted: boolean;
-}
-
-class DuplicateTupleError extends SigmaError {
-    constructor(private readonly _rel: string, private readonly _tuple: Tuple, private readonly _schema: Attribute[]) {
-        super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
-    }
-
-    public get relation(): string {
-        return this._rel;
-    }
-
-    public get tuple(): string {
-        return this._tuple.toString(this._schema);
-    }
-}
-
-class ValueOutOfLimitsError extends SigmaError {
-    constructor(_rel: string, _tuple: Tuple, _schema: Attribute[], _pos: number) {
-        const value = _schema[_pos].valueOf(_tuple[_pos]);
-        const tupleStr = _tuple.toString(_schema);
-        const attrName = _schema[_pos].name;
-        const { max, width } = _schema[_pos]
-
-        if (typeof value === "string") {
-            super(`Value ${value} in ${_rel}${tupleStr} exceeds maximum string length for attribute "${attrName}" (maximum is ${width}).`);
-        } else {
-            super(`Value ${value} in ${_rel}${tupleStr} exceeds value limit for attribute "${attrName}" (maximum is ${max}).`);
-        }
-    }
-}
-
-class UnsupportedOperationException extends SigmaError {
-    constructor(msg: string) {
-        super(msg);
-    }
+    log: TransactionLog;
+    tuples: List<Tuple, boolean>;
+    throwsOnDuplicate: boolean;
 }
 
 export abstract class Relation implements Iterable<Tuple> {
+    /**
+     * Default options to create the relation with if not specified differently by the user
+     */
+    private static readonly defaultOptions: Partial<Options> = {
+        throwsOnDuplicate: true,
+        sorted: true,
+    } as const;
+
     /**
      * Creates a new relation
      * @param name The name of the relation
      * @param schema The attributes of the relation
      * @param options Options specifying the behaviour of the relation
      */
-    public static create(name: string, schema: TSchema, options = Relation.defaultOptions): Relation {
-        const { throwsOnDuplicate, log, sorted } = { ...Relation.defaultOptions, ...options };
-        const tuples = sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>();
+    public static create(name: string, schema: Attribute[], options = Relation.defaultOptions): Relation {
+        const { throwsOnDuplicate, log, sorted, tuples } = { ...Relation.defaultOptions, ...options };
+        const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
+        let RelationConstructor = _Relation;
         if (!!log) {
-            return new RelationLogged(name, schema, tuples, log);
-        } else {
-            return new RelationTemp(name, schema, tuples);
+            RelationConstructor = mixinLogged(RelationConstructor);
         }
+        if (sorted) {
+            RelationConstructor = mixinSorted(RelationConstructor);
+        }
+
+        const inst = new RelationConstructor(name, schema, _tuples);
+        inst.init(options);
+        return inst;
     }
 
-    /**
-     * Creates a relation of the given name and schema from an existing set of tuples
-     * @param name The name of the new relation
-     * @param schema The schema of the new relation
-     * @param tuples The existing set of tuples to create the relation from
-     * @param options Options specifying the behaviour of the relation
-     */
-    public static from(name: string, schema: TSchema, tuples: TList<Tuple>, options = Relation.defaultOptions): Relation {
-        const rel = Relation.create(name, schema, options);
-        rel._tuples = tuples;
-        return rel;
-    }
+    protected readonly id: number;
 
-    /**
-     * Default options to create the relation with if not specified differently by the user
-     */
-    private static readonly defaultOptions: Partial<IOptions> = {
-        throwsOnDuplicate: true,
-        log: undefined,
-        sorted: true,
-    } as const;
-
-    private readonly _boundaries: [Array<bigint>, Array<bigint>, number[], Array<bigint>];
-
-    constructor(protected readonly _name: string, protected readonly _schema: TSchema, protected _tuples: TList<Tuple>) {
-        this._boundaries = [
-            _schema.map(attr => attr.min - 1n),
-            _schema.map(attr => attr.max),
-            _schema.map(attr => attr.exp),
-            _schema.map(attr => attr.wildcard),
-        ];
+    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple, boolean>) {
+        this.id = this.hash(_name);
     }
 
     /**
@@ -129,22 +94,25 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
-     * Whether this relation admits insertions to alter its tuple set
+     * Whether this relation's tuples are kept sorted
      */
-    public get isStatic(): boolean {
-        return this instanceof RelationStatic;
-    }
+    public get isSorted(): boolean {
+        return false;
+    };
 
     /**
      * Whether changes to this relation's tuple set are logged on disk
      */
     public get isLogged(): boolean {
-        return this instanceof RelationLogged;
-    }
+        return false;
+    };
 
-    public get isSorted(): boolean {
-        return this._tuples instanceof SkipList;
-    }
+    /**
+     * Whether this relation admits insertions to alter its tuple set
+     */
+    public get isStatic(): boolean {
+        return false;
+    };
 
     /**
      * Inserts a new tuple into the relation
@@ -168,11 +136,55 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
+     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
+     */
+    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
+        for (const tuple of this._tuples) {
+            yield tuple.toObject(this._schema);
+        }
+    }
+
+    public *[Symbol.iterator](): IterableIterator<Tuple> {
+        yield* this._tuples;
+    }
+
+    /**
+     * Returns a new relation sharing the state of this relation,
+     * but with its past and future tuples being kept sorted.
+     */
+    public sort(throwsOnDuplicate = true): Relation {
+        if (this.isSorted) {
+            return this;
+        } else {
+            const tuples = SkipList.from(this._tuples, throwsOnDuplicate);
+            return this.mixin(mixinSorted, { tuples });
+        }
+    }
+
+    /**
+     * Returns a new relation sharing the state of this relation,
+     * but logging any future modifications.
+     * @param log The log to write modifications to.
+     */
+    public log(log: TransactionLog): Relation {
+        if (this.isLogged) {
+            return this;
+        } else {
+            return this.mixin(mixinLogged, { log });
+        }
+    }
+
+    /**
      * Returns a new relation sharing the state of this relation,
      * but not allowing further modifications of its tuple set.
      */
-    public freeze(): Relation {
-        return new RelationStatic(this._name, this._schema, this._tuples);
+    public static(): Relation {
+        if (this.isStatic) {
+            return this;
+        } else {
+            return this.mixin(mixinStatic, {});
+        }
     }
 
     /**
@@ -180,8 +192,61 @@ export abstract class Relation implements Iterable<Tuple> {
      * @param tuple The tuple to probe
      */
     public gaps(tuple: Tuple): Box[] {
-        this.assertSorted(this._tuples);
+        throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
+    }
 
+    protected init(options: Partial<Options>): void { }
+
+    private mixin(mixin: Mixin, options: Partial<Options>): Relation {
+        const ctor = mixin(this.constructor as RelationConstructor);
+        const inst = new ctor(this._name, this._schema, options.tuples || this._tuples);
+        inst.init(options);
+        return inst;
+    }
+
+    /**
+     * Jenkins OAT hashing function, returning an unsigned integer
+     * @param key The value to hash
+     */
+    private hash(key: string): /* unsigned */ number {
+        let hash = 0;
+
+        for (let i = 0; i < key.length; i++) {
+            hash += key.charCodeAt(i);
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+
+        return hash >>> 0;  // make unsigned
+    }
+}
+
+/** Used to hide internals from the public API */
+class _Relation extends Relation { }
+
+const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRelation {
+    protected readonly _tuples: List<Tuple, true>;
+    private _boundaries: [bigint[], bigint[], number[], bigint[]];
+
+    public get isSorted(): true {
+        return true;
+    }
+
+    public init(options: Partial<Options>): void {
+        super.init(options);
+        this._boundaries = [
+            this._schema.map(attr => attr.min - 1n),
+            this._schema.map(attr => attr.max),
+            this._schema.map(attr => attr.exp),
+            this._schema.map(attr => attr.wildcard),
+        ];
+    }
+
+    public gaps(tuple: Tuple): Box[] {
         const gaps: Box[] = [];
         const [min, max, exp, wildcard] = this._boundaries;
         const [pred, succ] = this._tuples.find(tuple);
@@ -228,62 +293,35 @@ export abstract class Relation implements Iterable<Tuple> {
 
         return gaps;
     }
-
-    /**
-     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
-     */
-    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
-        for (const tuple of this._tuples) {
-            yield tuple.toObject(this._schema);
-        }
-    }
-
-    public *[Symbol.iterator](): IterableIterator<Tuple> {
-        yield* this._tuples;
-    }
-
-    private _gaps(tuple: Tuple, dim: number, start: bigint, end: bigint): Box[] {
-        const [, max, exp, wildcard] = this._boundaries;
-        const front = tuple.slice(0, dim).map((z, i) => z ^ max[i]);
-        const back = wildcard.slice(dim + 1);
-        return Dyadic.intervals(start, end, exp[dim]).map(i => Box.of(...front, i, ...back));
-    }
-
-    private assertSorted(list: IList<Tuple, ListType>): asserts list is IList<Tuple, ListType.SORTED> {
-        if (!(list instanceof SkipList)) {
-            throw new UnsupportedOperationException(`Function ${this.gaps.name} can only be executed if the relation is ordered.`);
-        }
-    }
 }
 
-class RelationTemp extends Relation {
-}
+const mixinLogged: Mixin = BaseRelation => class LoggedRelation extends BaseRelation {
+    private _log: TransactionLog;
 
-class RelationStatic extends Relation {
-    public insert(_tuple: Tuple): void {
-        throw new Error("Insertion into a static relation is not permitted");
+    public get isLogged(): true {
+        return true;
     }
-}
 
-type TInsertTransaction = Array<bigint>;
-
-class RelationLogged extends Relation {
-    private static ID = 1;
-
-    private readonly log: TransactionLog;
-    private readonly id: number;
-
-    constructor(name: string, schema: Attribute[], tuples: TList<Tuple>, log: TransactionLog) {
-        super(name, schema, tuples);
-        const tupleSchema = schema.map(() => Type.BIGINT);
+    public init(options: Partial<Options>): void {
+        super.init(options);
+        const tupleSchema = this._schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
-        this.log = log;
-        this.id = RelationLogged.ID++;
-        this.log.handle<TInsertTransaction>(this.id, logSchema, tx => super.insert(Tuple.from(tx)));
+        this._log = options.log;
+        this._log.handle(this.id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
     }
 
     public insert(tuple: Tuple): void {
         super.insert(tuple);
-        this.log.write<TInsertTransaction>(this.id, Array.from(tuple));
+        this._log.write(this.id, Array.from(tuple));
+    }
+}
+
+const mixinStatic: Mixin = BaseRelation => class StaticRelation extends BaseRelation {
+    public get isStatic(): true {
+        return true;
+    }
+
+    public insert(_tuple: Tuple): void {
+        throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");
     }
 }
