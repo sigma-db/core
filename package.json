@@ -25,7 +25,7 @@
     "typescript": "^3.7.0-beta"
   },
   "scripts": {
-    "build": "node build/grammar.js ./resources ./lib/query/parsers && tsc",
+    "build": "node scripts/grammar.js ./resources ./lib/query/parsers && tsc",
     "prepare": "npm run build",
     "refreshVSToken": "vsts-npm-auth -config .npmrc"
   },
