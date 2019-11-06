@@ -23,7 +23,7 @@ export class TransactionLog {
         const buf = readFileSync(this.fd);
         let pos = 0;
         while (pos < buf.length) {
-            const id = buf.readUInt8(pos);
+            const id = buf.readUInt32LE(pos);
             const schema = this.handlers[id].schema;
             const [tx] = schema.decode(buf, pos);
             pos += schema.size(tx);
@@ -31,8 +31,10 @@ export class TransactionLog {
         }
     }
 
-    public handle<T>(type: number, schema: ObjectSchema, handler: (tx: T) => void): void {
-        this.handlers[type] = { schema, handler };
+    public handle<T>(id: number, schema: ObjectSchema, handler: (tx: T) => void): number {
+        while (id in this.handlers) id++;       // if the specified id is already taken, increment until an empty slot is found
+        this.handlers[id] = { schema, handler };
+        return id;
     }
 
     public write<T>(id: number, tx: T): void {

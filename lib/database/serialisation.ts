@@ -251,8 +251,8 @@ export class ObjectSchema {
     public encode(obj: any, id: number): Buffer {
         const sz = this.size(obj);
         const buf = Buffer.allocUnsafe(sz);
-        buf.writeUInt8(id, 0);
-        this.root.encode(obj, buf, 1);
+        buf.writeUInt32LE(id, 0);
+        this.root.encode(obj, buf, 4);
         return buf;
     }
 
@@ -262,8 +262,8 @@ export class ObjectSchema {
      * @param offset The offset to start reading from
      */
     public decode(buf: Buffer, offset = 0): [TType, number] {
-        const id = buf.readUInt8(offset);
-        const obj = this.root.decode(buf, offset + 1);
+        const id = buf.readUInt32LE(offset);
+        const obj = this.root.decode(buf, offset + 4);
         return [obj, id];
     }
 
@@ -272,6 +272,6 @@ export class ObjectSchema {
      * @param obj The object to get the size of
      */
     public size(obj: any): number {
-        return this.root.size(obj) + 1;
+        return this.root.size(obj) + 4;
     }
 }

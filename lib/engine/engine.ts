@@ -1,5 +1,5 @@
 import { Attribute, Database, DataType, DatabaseSchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TProgram, TQuery, TupleType, ValueType } from "../query";
+import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TQuery, TupleType, ValueType } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
@@ -37,6 +37,7 @@ export abstract class Engine {
         Attribute.create("Relation", DataType.STRING, 32),
         Attribute.create("Arity", DataType.INT),
         Attribute.create("Cardinality", DataType.INT),
+        Attribute.create("Sorted", DataType.BOOL),
         Attribute.create("Logged", DataType.BOOL),
         Attribute.create("Static", DataType.BOOL),
     ];
@@ -74,24 +75,22 @@ export abstract class Engine {
             this.evaluateQuery(query.AST, db);
     }
 
-    private evaluateProgram(statements: TProgram, db: Database, outRelation: string): TResult {
-        if (statements.length > 0) {
-            const overlay = db.overlay();
-            for (let i = 0; i < statements.length; i++) {
-                const result = this.evaluateQuery(statements[i], overlay);
-                if (result.type === ResultType.RELATION) {
-                    try {
-                        overlay.addRelation(result.relation);
-                    } catch (e) {
-                        return ERROR(e.message);
-                    }
-                } else if (result.success === false) {
-                    return result;
+    private evaluateProgram(statements: IterableIterator<TQuery>, db: Database, outRelation: string): TResult {
+        const overlay = db.overlay();
+        for (const statement of statements) {
+            const result = this.evaluateQuery(statement, overlay);
+            if (result.type === ResultType.RELATION) {
+                try {
+                    overlay.addRelation(result.relation);
+                } catch (e) {
+                    return ERROR(e.message);
                 }
+            } else if (result.success === false) {
+                return result;
             }
-            if (!!outRelation) {
-                return RELATION(overlay.getRelation(outRelation));
-            }
+        }
+        if (!!outRelation) {
+            return RELATION(overlay.getRelation(outRelation));
         }
         return SUCCESS();
     }
@@ -178,7 +177,7 @@ export abstract class Engine {
         if (!query.rel) {
             result = Relation.create("Database Schema", Engine.DATABASE_SCHEMA);
             Object.entries(db.schema).forEach(([, rel]) => {
-                const tuple = Tuple.create([rel.name, rel.arity, rel.size, rel.isLogged, rel.isStatic]);
+                const tuple = Tuple.create([rel.name, rel.arity, rel.size, rel.isSorted, rel.isLogged, rel.isStatic]);
                 result.insert(tuple);
             });
         } else {
