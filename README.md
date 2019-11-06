@@ -79,24 +79,22 @@ Order(master=x, servant=y) <-
 Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:
 
 ```TypeScript
-import { Database, Engine, Query } from "sigma";
+import { Database, Engine, Program, ResultType } from "sigma";
 import { readFileSync } from "fs";
 
-const db = Database.open();     // using a temporary database
-const ng = Engine.create();     // using the default query evaluation engine
-const cp = Query.parse(         // using the default CQ parser
-    readFileSync("employees.cqs", "utf8"),
-    { script: true },           // interpret the input as a conjunctive program
-);
+const script = readFileSync("employees.cqs", "utf8");
 
-// execute the program on db
-const result = ng.evaluate(cp, db);
-if (result) {
-    console.table([...result.tuples()]);
+const db = Database.open();         // using a temporary database
+const ng = Engine.create();         // using the default query evaluation engine
+const cp = Program.parse(script);   // using the default parser for conjunctive programs
+
+// execute the program "cp" on database "db" and output tuples of relation "Order"
+const result = ng.evaluate(cp, db, "Order");
+if (result.type === ResultType.RELATION) {
+    console.table([...result.relation.tuples()]);
 }
 
-// free up used memory
-db.close();
+db.close();     // free up used memory
 ```
 
 ## Limitations
