@@ -2,6 +2,12 @@
   "name": "@sigma-db/core",
   "version": "0.10.0",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
+  "keywords": [
+    "database theory",
+    "relational databases",
+    "conjunctive queries",
+    "DBMS"
+  ],
   "author": {
     "name": "David Luis Wiegandt",
     "email": "wigandtd@hu-berlin.de",
@@ -26,10 +32,8 @@
   },
   "scripts": {
     "build": "node scripts/grammar.js ./resources ./lib/query/parsers && tsc",
-    "prepare": "npm run build",
-    "refreshVSToken": "vsts-npm-auth -config .npmrc"
+    "prepare": "npm run build"
   },
-  "dependencies": {},
   "bin": {
     "sigma": "./dist/bin/main.js"
   },

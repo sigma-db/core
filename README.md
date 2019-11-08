@@ -42,6 +42,8 @@ We discern four types of queries, whose syntax we outline by example:
 3. To **select** all employees' IDs whose salary is 4,200, write either `(name=x) <- Employee(name=x, salary=4200)` or `(name=y) <- Employee(x, y, 4200, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
 
+In addition, we allow `<rel>!` as a shortcut for a **select**-query that simply queries all of `<rel>`'s tuples.
+
 ## Usage as a Library
 
 The following script **creates** a database with two relations *Employee* and *Division*, **inserts** some tuples and **selects** all employees and their respective division head.

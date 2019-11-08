@@ -36,6 +36,8 @@ export abstract class Relation implements Iterable<Tuple> {
         sorted: true,
     } as const;
 
+    private static anonymousCnt = 1;
+
     /**
      * Creates a new relation
      * @param name The name of the relation
@@ -54,16 +56,37 @@ export abstract class Relation implements Iterable<Tuple> {
             RelationConstructor = mixinSorted(RelationConstructor);
         }
 
-        const inst = new RelationConstructor(name, schema, _tuples);
+        const inst = new RelationConstructor(name, schema, _tuples, Relation.hash(name || `@${Relation.anonymousCnt++}`));
         inst.init(options);
         return inst;
     }
 
-    protected readonly id: number;
+    /**
+     * Jenkins OAT hashing function, returning an unsigned integer
+     * @param key The value to hash
+     */
+    private static hash(key: string): number {
+        let hash = 0;
 
-    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple, boolean>) {
-        this.id = this.hash(_name);
+        for (let i = 0; i < key.length; i++) {
+            hash += key.charCodeAt(i);
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+
+        return hash >>> 0;  // make unsigned
     }
+
+    constructor(
+        protected readonly _name: string,
+        protected readonly _schema: Attribute[],
+        protected readonly _tuples: List<Tuple, boolean>,
+        protected readonly _id: number,
+    ) { }
 
     /**
      * The name of the relation
@@ -203,26 +226,6 @@ export abstract class Relation implements Iterable<Tuple> {
         inst.init(options);
         return inst;
     }
-
-    /**
-     * Jenkins OAT hashing function, returning an unsigned integer
-     * @param key The value to hash
-     */
-    private hash(key: string): /* unsigned */ number {
-        let hash = 0;
-
-        for (let i = 0; i < key.length; i++) {
-            hash += key.charCodeAt(i);
-            hash += (hash << 10);
-            hash ^= (hash >> 6);
-        }
-
-        hash += (hash << 3);
-        hash ^= (hash >> 11);
-        hash += (hash << 15);
-
-        return hash >>> 0;  // make unsigned
-    }
 }
 
 /** Used to hide internals from the public API */
@@ -307,12 +310,12 @@ const mixinLogged: Mixin = BaseRelation => class LoggedRelation extends BaseRela
         const tupleSchema = this._schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
         this._log = options.log;
-        this._log.handle(this.id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
+        this._log.handle(this._id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
     }
 
     public insert(tuple: Tuple): void {
         super.insert(tuple);
-        this._log.write(this.id, Array.from(tuple));
+        this._log.write(this._id, Array.from(tuple));
     }
 }
 

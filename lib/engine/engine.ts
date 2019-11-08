@@ -1,5 +1,5 @@
 import { Attribute, Database, DataType, DatabaseSchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TQuery, TupleType, ValueType } from "../query";
+import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TQuery, TupleType, ValueType, IDumpQuery } from "../query";
 import { VariableSet } from "./variable-set";
 import { IResolvedAtom, TetrisJoin } from "./geometric";
 import { Projection } from "./common";
@@ -65,32 +65,33 @@ export abstract class Engine {
      * returns the relation or only a success message.
      * @param program The program to evaluate
      * @param db The database to evaluate the query on
-     * @param outRelation The relation to return after evaluation of the program
+     * @param ans The name of the relation to return after evaluation of the program
+     * @param overlay Whether the evaluation should happen on an overlay database or the database `db` itself
      */
-    public evaluate(program: Program, db: Database, outRelation: string): TResult;
+    public evaluate(program: Program, db: Database, ans: string, overlay?: boolean): TResult;
 
-    public evaluate(query: Query | Program, db: Database, relation?: string): TResult {
+    public evaluate(query: Query | Program, db: Database, relation?: string, overlay = true): TResult {
         return query instanceof Program ?
-            this.evaluateProgram(query.statements, db, relation) :
+            this.evaluateProgram(query.statements, db, relation, overlay) :
             this.evaluateQuery(query.AST, db);
     }
 
-    private evaluateProgram(statements: IterableIterator<TQuery>, db: Database, outRelation: string): TResult {
-        const overlay = db.overlay();
+    private evaluateProgram(statements: IterableIterator<TQuery>, db: Database, ans: string, overlay: boolean): TResult {
+        db = overlay ? db.overlay() : db;
         for (const statement of statements) {
-            const result = this.evaluateQuery(statement, overlay);
+            const result = this.evaluateQuery(statement, db);
             if (result.type === ResultType.RELATION) {
                 try {
-                    overlay.addRelation(result.relation);
+                    db.addRelation(result.relation);
                 } catch (e) {
                     return ERROR(e.message);
                 }
-            } else if (result.success === false) {
+            } else if (!result.success) {
                 return result;
             }
         }
-        if (!!outRelation) {
-            return RELATION(overlay.getRelation(outRelation));
+        if (!!ans) {
+            return RELATION(db.getRelation(ans));
         }
         return SUCCESS();
     }
@@ -101,6 +102,7 @@ export abstract class Engine {
             case QueryType.SELECT: return this.onSelect(query, db);
             case QueryType.CREATE: return this.onCreate(query, db);
             case QueryType.INFO: return this.onInfo(query, db);
+            case QueryType.DUMP: return this.onDump(query, db);
             default: throw new Error("Unsupported query type");
         }
     }
@@ -192,6 +194,14 @@ export abstract class Engine {
             }
         }
         return RELATION(result.static());
+    }
+
+    private onDump(query: IDumpQuery, db: Database): TResult {
+        try {
+            return RELATION(db.getRelation(query.rel).static());
+        } catch (e) {
+            return ERROR(e.message);
+        }
     }
 }
 

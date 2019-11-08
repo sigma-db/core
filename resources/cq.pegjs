@@ -1,7 +1,10 @@
 ﻿program "program"   = queries:(_ @(comment / @stmt _ ".") _)* { return queries.filter(q => !!q) }
 query   "query"     = _ q:stmt _ { return q }
-stmt    "statement" = insert_stmt / create_stmt / select_stmt / info_stmt
+stmt    "statement" = insert_stmt / create_stmt / select_stmt / info_stmt / dump_stmt
 comment "comment"   = "%" (!LF .)* LF { }
+
+/* dump */
+dump_stmt = r:rel_name _ "!" { return { type: "dump", rel: r } }
 
 /* info */
 info_stmt = r:rel_name? _ "?" { return { type: "info", rel: r } }
