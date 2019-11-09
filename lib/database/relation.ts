@@ -48,16 +48,14 @@ export abstract class Relation implements Iterable<Tuple> {
         const { throwsOnDuplicate, log, sorted, tuples } = { ...Relation.defaultOptions, ...options };
         const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
-        let RelationConstructor = _Relation;
+        let inst = new _Relation(name, schema, _tuples, Relation.hash(name || `@${Relation.anonymousCnt++}`));
         if (!!log) {
-            RelationConstructor = mixinLogged(RelationConstructor);
+            inst = inst.log(log);
         }
         if (sorted) {
-            RelationConstructor = mixinSorted(RelationConstructor);
+            inst = inst.sort();
         }
 
-        const inst = new RelationConstructor(name, schema, _tuples, Relation.hash(name || `@${Relation.anonymousCnt++}`));
-        inst.init(options);
         return inst;
     }
 
@@ -159,20 +157,6 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
-     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
-     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
-     */
-    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
-        for (const tuple of this._tuples) {
-            yield tuple.toObject(this._schema);
-        }
-    }
-
-    public *[Symbol.iterator](): IterableIterator<Tuple> {
-        yield* this._tuples;
-    }
-
-    /**
      * Returns a new relation sharing the state of this relation,
      * but with its past and future tuples being kept sorted.
      */
@@ -180,8 +164,7 @@ export abstract class Relation implements Iterable<Tuple> {
         if (this.isSorted) {
             return this;
         } else {
-            const tuples = SkipList.from(this._tuples, throwsOnDuplicate);
-            return this.mixin(mixinSorted, { tuples });
+            return this.mixin(mixinSorted, { throwsOnDuplicate });
         }
     }
 
@@ -218,11 +201,26 @@ export abstract class Relation implements Iterable<Tuple> {
         throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
     }
 
-    protected init(options: Partial<Options>): void { }
+    /**
+     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
+     */
+    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
+        for (const tuple of this._tuples) {
+            yield tuple.toObject(this._schema);
+        }
+    }
+
+    public *[Symbol.iterator](): IterableIterator<Tuple> {
+        yield* this._tuples;
+    }
+
+    protected init(options?: Partial<Options>): void { }
 
     private mixin(mixin: Mixin, options: Partial<Options>): Relation {
+        const inst = { ...this };
         const ctor = mixin(this.constructor as RelationConstructor);
-        const inst = new ctor(this._name, this._schema, options.tuples || this._tuples);
+        Object.setPrototypeOf(inst, ctor.prototype);
         inst.init(options);
         return inst;
     }
@@ -232,7 +230,7 @@ export abstract class Relation implements Iterable<Tuple> {
 class _Relation extends Relation { }
 
 const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRelation {
-    protected readonly _tuples: List<Tuple, true>;
+    protected _tuples: List<Tuple, true>;
     private _boundaries: [bigint[], bigint[], number[], bigint[]];
 
     public get isSorted(): true {
@@ -240,7 +238,7 @@ const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRela
     }
 
     public init(options: Partial<Options>): void {
-        super.init(options);
+        this._tuples = SkipList.from(this._tuples, options.throwsOnDuplicate);
         this._boundaries = [
             this._schema.map(attr => attr.min - 1n),
             this._schema.map(attr => attr.max),
@@ -306,7 +304,6 @@ const mixinLogged: Mixin = BaseRelation => class LoggedRelation extends BaseRela
     }
 
     public init(options: Partial<Options>): void {
-        super.init(options);
         const tupleSchema = this._schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
         this._log = options.log;
@@ -323,6 +320,8 @@ const mixinStatic: Mixin = BaseRelation => class StaticRelation extends BaseRela
     public get isStatic(): true {
         return true;
     }
+
+    public init(): void { }
 
     public insert(_tuple: Tuple): void {
         throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");

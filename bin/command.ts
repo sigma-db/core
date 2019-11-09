@@ -14,38 +14,46 @@ class CommandParser {
     constructor(private readonly input: string) { }
 
     public parseCommand(): CommandLike {
-        let cmd: string, arg: string, opts: MapLike;
+        let cmd: string, arg: string, opts: MapLike = {};
 
         // ignore leading whitespace
-        this.parseOptionalWhitespace();
+        this.parseWhitespace();
 
         // parse command name
-        cmd = this.parseName();
-        this.parseOptionalWhitespace();
+        cmd = this.parseIdentifier();
+        this.parseWhitespace();
 
         // parse the command argument (if any)
         if (!this.isEnd) {
             this.parseLiteral(":");
-            this.parseOptionalWhitespace();
-            arg = this.parseValue();
+            this.parseWhitespace();
+            arg = this.parseString();
+        }
+
+        // if we not yet reached the end, the next char must be a whitespace
+        if (!this.isEnd) {
+            this.parseLiteral(" ");
+            this.parseWhitespace();
         }
 
         // parse the command options (if any)
-        const params = new Array<MapLike>();
         while (!this.isEnd) {
-            this.parseRequiredWhitespace();
-            const name = this.parseName();
-            this.parseOptionalWhitespace();
+            const name = this.parseIdentifier();
+            this.parseWhitespace();
             this.parseLiteral(":");
-            this.parseOptionalWhitespace();
-            const value = this.parseValue();
+            this.parseWhitespace();
+            const value = this.parseString();
 
-            params.push({ [name]: value });
+            if (!this.isEnd) {
+                this.parseLiteral(" ");
+                this.parseWhitespace();
+            }
+
+            opts[name] = value;
         }
-        opts = Object.assign({}, ...params);
 
         // ignore trailing whitespace
-        this.parseOptionalWhitespace();
+        this.parseWhitespace();
 
         if (this.isEnd) {
             return { cmd, arg, opts };
@@ -54,7 +62,10 @@ class CommandParser {
         }
     }
 
-    private parseName(): string {
+    /**
+     * Parses an identifier, such as a command or parameter name
+     */
+    private parseIdentifier(): string {
         const startPos = this.pos;
 
         while (/^[A-Za-z0-9_]/.test(this.input.charAt(this.pos))) {
@@ -68,17 +79,26 @@ class CommandParser {
         }
     }
 
-    private parseValue(): string {
+    /**
+     * Parses a double quote delimited string
+     */
+    private parseString(): string {
         const startPos = this.pos;
 
         this.parseLiteral("\"", "string");
         while (this.input.charAt(this.pos) !== "\"") {
             this.pos++;
         }
+        this.parseLiteral("\"", "string");
 
-        return this.input.substring(startPos + 1, this.pos++);
+        return this.input.substring(startPos + 1, this.pos - 1);
     }
 
+    /**
+     * Parses the character specified by `literal` and throws an exception 
+     * if the character at the current position does not match.
+     * @param literal The character to check
+     */
     private parseLiteral(literal: string, expected = `literal "${literal}"`): void {
         if (this.input.charAt(this.pos) === literal) {
             this.pos++;
@@ -87,19 +107,20 @@ class CommandParser {
         }
     }
 
-    private parseOptionalWhitespace(): void {
+    /**
+     * Parses an arbitrary number of whitespace character
+     */
+    private parseWhitespace(): void {
         while (this.input.charAt(this.pos) === " ") {
             this.pos++;
         }
     }
 
-    private parseRequiredWhitespace(): void {
-        this.parseLiteral(" ");
-        this.parseOptionalWhitespace();
-    }
-
+    /**
+     * Whether the input was entirely read
+     */
     private get isEnd(): boolean {
-        return this.pos === this.input.length;
+        return this.pos >= this.input.length;
     }
 }
 

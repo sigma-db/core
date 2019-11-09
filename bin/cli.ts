@@ -21,26 +21,30 @@ export default class CLI {
             input: process.stdin,
             output: process.stdout,
         });
-        this.commandMode = true;
+        this.commandMode = false;
 
         this.repl.on("close", () => this.database.close());
         this.repl.on("line", input => {
-            if (this.commandMode) {
-                this.handleCommand(Command.parse(input));
-            } else {
-                this.handleQuery(Query.parse(input));
+            try {
+                if (this.commandMode) {
+                    this.handleCommand(Command.parse(input));
+                } else {
+                    const result = this.engine.evaluate(Query.parse(input), this.database);
+                    this.logResult(result);
+                }
+            } catch (e) {
+                console.log(e.message);
             }
             this.repl.prompt();
         });
 
-        // the escape-key is used to toggle between query mode and command mode
         if (process.stdin.isTTY) {
             process.stdin.setRawMode(true);
         }
         process.stdin.on('keypress', (_str, key) => {
             if (key && key.name === "escape") {
-                this.commandMode = !this.commandMode;
-                this.repl.setPrompt(this.commandMode ? "> " : "? ");
+                this.commandMode = !this.commandMode;   // the escape-key is used to toggle between query mode and command mode
+                this.repl.setPrompt(this.commandMode ? "! " : "> ");
                 this.repl.prompt(true);
             }
         });
@@ -54,7 +58,12 @@ export default class CLI {
                 const { ans, overlay } = opts;
                 try {
                     const program = Program.parse(readFileSync(arg, "utf8"));
-                    const result = this.engine.evaluate(program, this.database, ans, overlay === "true");
+                    const useOverlay = !overlay || overlay.toLowerCase() === "true";
+                    if (!!ans) {
+                        console.error("You need to specify an answer relation using the \"ans\" paramter.");
+                        return;
+                    }
+                    const result = this.engine.evaluate(program, this.database, ans, useOverlay);
                     this.logResult(result);
                 } catch (e) {
                     console.error(e.message);
@@ -62,19 +71,11 @@ export default class CLI {
                 return;
             case "exit":
             case "quit":
+                console.log("Bye");
                 this.repl.close();
                 process.exit(0);
         }
         console.error(`Unknown command "${cmd}"`);
-    }
-
-    private handleQuery(query: Query): void {
-        try {
-            const result = this.engine.evaluate(query, this.database);
-            this.logResult(result);
-        } catch (e) {
-            console.error(e.message);
-        }
     }
 
     private logResult(result: Result): void {

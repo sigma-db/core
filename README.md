@@ -25,10 +25,10 @@ Thereafter, you can run sigmaDB from the command line with `sigma --database=</p
 
 ### Custom Build
 
-If instead you want to clone the repository and build sigmaDB from source by yourself, follow these steps:
+If you want to clone the repository and build sigmaDB from source by yourself, follow these teps:
 
 * Clone the project with `git clone https://dev.azure.com/dlw/sigmaDB/_git/core`.
-* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/) and to subsequently build the library and the accompanying client application.
+* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/) and build the project.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
 You can now use sigmaDB as described in [Installation](#installation).
@@ -84,11 +84,11 @@ Assuming the script is stored in a file named `employees.cqs`, we can evaluate i
 import { Database, Engine, Program, ResultType } from "sigma";
 import { readFileSync } from "fs";
 
-const script = readFileSync("employees.cqs", "utf8");
+const raw = readFileSync("employees.cqs", "utf8");
 
-const db = Database.open();         // using a temporary database
-const ng = Engine.create();         // using the default query evaluation engine
-const cp = Program.parse(script);   // using the default parser for conjunctive programs
+const db = Database.open();     // using a temporary database
+const ng = Engine.create();     // using the default query evaluation engine
+const cp = Program.parse(raw);  // using the default parser for conjunctive programs
 
 // execute the program "cp" on database "db" and output tuples of relation "Order"
 const result = ng.evaluate(cp, db, "Order");
