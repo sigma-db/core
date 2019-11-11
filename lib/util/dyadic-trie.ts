@@ -70,5 +70,7 @@ export class DyadicTrie<T> {
             }
             node = node.children[Number(BigInt.asIntN(1, key >> --msb))];
         } while (!!node && msb >= 0n);
+
+        return null;
     }
 }

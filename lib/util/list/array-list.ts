@@ -18,6 +18,7 @@ export class ArrayList<T extends IComparable<T>> implements List<T, false> {
                 return c;
             }
         }
+        return null;
     }
 
     public insert(key: T): void {

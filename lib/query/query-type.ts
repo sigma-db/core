@@ -1,6 +1,6 @@
 import { IAttributeLike } from "../database";
 
-export const enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info" }
+export const enum QueryType { CREATE = "create", INSERT = "insert", SELECT = "select", INFO = "info", DUMP = "dump" }
 export const enum TupleType { NAMED = "named", UNNAMED = "unnamed" }
 export const enum ValueType { VARIABLE = "variable", LITERAL = "literal" }
 
@@ -60,4 +60,9 @@ export interface IInfoQuery {
     rel?: string;
 }
 
-export type TQuery = ICreateQuery | IInsertQuery | ISelectQuery | IInfoQuery;
+export interface IDumpQuery {
+    type: QueryType.DUMP;
+    rel: string;
+}
+
+export type TQuery = ICreateQuery | IInsertQuery | ISelectQuery | IInfoQuery | IDumpQuery;

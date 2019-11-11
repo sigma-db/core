@@ -31,4 +31,10 @@ export class ValueOutOfLimitsError extends SigmaError {
     }
 }
 
+export class ArityMismatchError extends SigmaError {
+    constructor(_rel: string, _tuple: Tuple, _schema: Attribute[]) {
+        super(`Relation ${_rel} has arity ${_schema.length}, but given tuple ${_tuple.toString(_schema)} has arity ${_tuple.length}.`);
+    }
+}
+
 export class UnsupportedOperationError extends SigmaError { }

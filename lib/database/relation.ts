@@ -2,7 +2,7 @@
 import { DuplicateKeyError, SkipList, ArrayList, List } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
-import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError } from "./errors";
+import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError, ArityMismatchError } from "./errors";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
@@ -36,6 +36,8 @@ export abstract class Relation implements Iterable<Tuple> {
         sorted: true,
     } as const;
 
+    private static anonymousCnt = 1;
+
     /**
      * Creates a new relation
      * @param name The name of the relation
@@ -46,24 +48,43 @@ export abstract class Relation implements Iterable<Tuple> {
         const { throwsOnDuplicate, log, sorted, tuples } = { ...Relation.defaultOptions, ...options };
         const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
-        let RelationConstructor = _Relation;
+        let inst = new _Relation(name, schema, _tuples, Relation.hash(name || `@${Relation.anonymousCnt++}`));
         if (!!log) {
-            RelationConstructor = mixinLogged(RelationConstructor);
+            inst = inst.log(log);
         }
         if (sorted) {
-            RelationConstructor = mixinSorted(RelationConstructor);
+            inst = inst.sort();
         }
 
-        const inst = new RelationConstructor(name, schema, _tuples);
-        inst.init(options);
         return inst;
     }
 
-    protected readonly id: number;
+    /**
+     * Jenkins OAT hashing function, returning an unsigned integer
+     * @param key The value to hash
+     */
+    private static hash(key: string): number {
+        let hash = 0;
 
-    constructor(protected readonly _name: string, protected readonly _schema: Attribute[], protected readonly _tuples: List<Tuple, boolean>) {
-        this.id = this.hash(_name);
+        for (let i = 0; i < key.length; i++) {
+            hash += key.charCodeAt(i);
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+
+        return hash >>> 0;  // make unsigned
     }
+
+    constructor(
+        protected readonly _name: string,
+        protected readonly _schema: Attribute[],
+        protected readonly _tuples: List<Tuple, boolean>,
+        protected readonly _id: number,
+    ) { }
 
     /**
      * The name of the relation
@@ -118,35 +139,26 @@ export abstract class Relation implements Iterable<Tuple> {
      * Inserts a new tuple into the relation
      * @param tuple The tuple to insert
      */
-    public insert(tuple: Tuple) {
+    public insert(tuple: Tuple): void {
+        const aritiesMatch = this.arity === tuple.length;
+        if (!aritiesMatch) {
+            throw new ArityMismatchError(this._name, tuple, this._schema);
+        }
+
         const limitErrPos = tuple.findIndex((v, i) => v > this._schema[i].max); // check whether all values fit their respective attribute's maximum value
         if (limitErrPos >= 0) {
-            throw new ValueOutOfLimitsError(this.name, tuple, this._schema, limitErrPos);
-        } else {
-            try {
-                this._tuples.insert(tuple);
-            } catch (e) {
-                if (e instanceof DuplicateKeyError) {
-                    throw new DuplicateTupleError(this.name, e.key, this._schema);
-                } else {
-                    throw e;
-                }
+            throw new ValueOutOfLimitsError(this._name, tuple, this._schema, limitErrPos);
+        }
+
+        try {
+            this._tuples.insert(tuple);
+        } catch (e) {
+            if (e instanceof DuplicateKeyError) {
+                throw new DuplicateTupleError(this.name, e.key, this._schema);
+            } else {
+                throw e;
             }
         }
-    }
-
-    /**
-     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
-     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
-     */
-    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
-        for (const tuple of this._tuples) {
-            yield tuple.toObject(this._schema);
-        }
-    }
-
-    public *[Symbol.iterator](): IterableIterator<Tuple> {
-        yield* this._tuples;
     }
 
     /**
@@ -158,7 +170,7 @@ export abstract class Relation implements Iterable<Tuple> {
             return this;
         } else {
             const tuples = SkipList.from(this._tuples, throwsOnDuplicate);
-            return this.mixin(mixinSorted, { tuples });
+            return this.mixin(mixinSorted, { throwsOnDuplicate, tuples });
         }
     }
 
@@ -195,33 +207,27 @@ export abstract class Relation implements Iterable<Tuple> {
         throw new UnsupportedOperationError(`Function ${this.gaps.name} can only be executed if the relation is kept sorted.`);
     }
 
-    protected init(options: Partial<Options>): void { }
+    /**
+     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
+     */
+    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
+        for (const tuple of this._tuples) {
+            yield tuple.toObject(this._schema);
+        }
+    }
+
+    public *[Symbol.iterator](): IterableIterator<Tuple> {
+        yield* this._tuples;
+    }
+
+    protected init(options?: Partial<Options>): void { }
 
     private mixin(mixin: Mixin, options: Partial<Options>): Relation {
         const ctor = mixin(this.constructor as RelationConstructor);
-        const inst = new ctor(this._name, this._schema, options.tuples || this._tuples);
+        const inst = Reflect.construct(ctor, [this._name, this._schema, options.tuples || this._tuples, this._id]);
         inst.init(options);
         return inst;
-    }
-
-    /**
-     * Jenkins OAT hashing function, returning an unsigned integer
-     * @param key The value to hash
-     */
-    private hash(key: string): /* unsigned */ number {
-        let hash = 0;
-
-        for (let i = 0; i < key.length; i++) {
-            hash += key.charCodeAt(i);
-            hash += (hash << 10);
-            hash ^= (hash >> 6);
-        }
-
-        hash += (hash << 3);
-        hash ^= (hash >> 11);
-        hash += (hash << 15);
-
-        return hash >>> 0;  // make unsigned
     }
 }
 
@@ -229,15 +235,13 @@ export abstract class Relation implements Iterable<Tuple> {
 class _Relation extends Relation { }
 
 const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRelation {
-    protected readonly _tuples: List<Tuple, true>;
     private _boundaries: [bigint[], bigint[], number[], bigint[]];
 
     public get isSorted(): true {
         return true;
     }
 
-    public init(options: Partial<Options>): void {
-        super.init(options);
+    public init(): void {
         this._boundaries = [
             this._schema.map(attr => attr.min - 1n),
             this._schema.map(attr => attr.max),
@@ -249,7 +253,7 @@ const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRela
     public gaps(tuple: Tuple): Box[] {
         const gaps: Box[] = [];
         const [min, max, exp, wildcard] = this._boundaries;
-        const [pred, succ] = this._tuples.find(tuple);
+        const [pred, succ] = (this._tuples as List<Tuple, true>).find(tuple);
 
         if (!pred && !succ) {
             // empty relation --> return box covering entire (sub)space
@@ -303,16 +307,15 @@ const mixinLogged: Mixin = BaseRelation => class LoggedRelation extends BaseRela
     }
 
     public init(options: Partial<Options>): void {
-        super.init(options);
         const tupleSchema = this._schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
         this._log = options.log;
-        this._log.handle(this.id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
+        this._log.handle(this._id, logSchema, (tx: bigint[]) => this._tuples.insert(Tuple.from(tx)));
     }
 
     public insert(tuple: Tuple): void {
         super.insert(tuple);
-        this._log.write(this.id, Array.from(tuple));
+        this._log.write(this._id, Array.from(tuple));
     }
 }
 
@@ -320,6 +323,8 @@ const mixinStatic: Mixin = BaseRelation => class StaticRelation extends BaseRela
     public get isStatic(): true {
         return true;
     }
+
+    public init(): void { }
 
     public insert(_tuple: Tuple): void {
         throw new UnsupportedOperationError("Insertion into a static relation is not permitted.");

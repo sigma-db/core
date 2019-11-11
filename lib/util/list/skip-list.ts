@@ -28,11 +28,15 @@ export class SkipList<T extends IComparable<T>> implements List<T, true> {
     private _size: number;
 
     public static from<T extends IComparable<T>>(src: List<T, boolean>, throwsOnDuplicate = false): SkipList<T> {
-        const result = new SkipList<T>(4, 0.25, throwsOnDuplicate);
-        for (const el of src) {
-            result.insert(el);
+        if (src instanceof SkipList) {
+            return src;
+        } else {
+            const result = new SkipList<T>(4, 0.25, throwsOnDuplicate);
+            for (const el of src) {
+                result.insert(el);
+            }
+            return result;
         }
-        return result;
     }
 
     constructor(private readonly depth = 4, private readonly p = 1 / depth, private readonly throwsOnDuplicate = false) {

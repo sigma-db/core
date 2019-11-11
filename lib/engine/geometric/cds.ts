@@ -25,9 +25,7 @@ export class CDS {
      */
     public witness(box: Box): Box {
         const b = this.cover(box, 0, this.data);
-        if (!!b) {
-            return Box.from(b);
-        }
+        return !!b ? Box.from(b) : null;
     }
 
     /**
@@ -49,5 +47,6 @@ export class CDS {
                 }
             }
         }
+        return null;
     }
 }

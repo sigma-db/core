@@ -8,7 +8,12 @@
     "outDir": "dist",
     "target": "esnext",
     "sourceMap": true,
-    "removeComments": false
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "incremental": true
   },
   "include": [
     "lib/**/*",

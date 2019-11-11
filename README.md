@@ -25,10 +25,10 @@ Thereafter, you can run sigmaDB from the command line with `sigma --database=</p
 
 ### Custom Build
 
-If instead you want to clone the repository and build sigmaDB from source by yourself, follow these steps:
+If you want to clone the repository and build sigmaDB from source by yourself, follow these teps:
 
 * Clone the project with `git clone https://dev.azure.com/dlw/sigmaDB/_git/core`.
-* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/) and to subsequently build the library and the accompanying client application.
+* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/) and build the project.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
 You can now use sigmaDB as described in [Installation](#installation).
@@ -41,6 +41,8 @@ We discern four types of queries, whose syntax we outline by example:
 2. To **insert** a tuple into the (existing) relation *Employee*, write `Employee(id=1, name="Sam", salary=4200, boss=0)`. Alternatively, the less verbose syntax `Employee(1, "Sam", 4200, 0)` can be used. Please note that in the latter case, the order of the attributes matters, while it does not in the former.
 3. To **select** all employees' IDs whose salary is 4,200, write either `(name=x) <- Employee(name=x, salary=4200)` or `(name=y) <- Employee(x, y, 4200, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
+
+In addition, we allow `<rel>!` as a shortcut for a **select**-query that simply queries all of `<rel>`'s tuples.
 
 ## Usage as a Library
 
@@ -79,24 +81,22 @@ Order(master=x, servant=y) <-
 Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:
 
 ```TypeScript
-import { Database, Engine, Query } from "sigma";
+import { Database, Engine, Program, ResultType } from "sigma";
 import { readFileSync } from "fs";
+
+const raw = readFileSync("employees.cqs", "utf8");
 
 const db = Database.open();     // using a temporary database
 const ng = Engine.create();     // using the default query evaluation engine
-const cp = Query.parse(         // using the default CQ parser
-    readFileSync("employees.cqs", "utf8"),
-    { script: true },           // interpret the input as a conjunctive program
-);
+const cp = Program.parse(raw);  // using the default parser for conjunctive programs
 
-// execute the program on db
-const result = ng.evaluate(cp, db);
-if (result) {
-    console.table([...result.tuples()]);
+// execute the program "cp" on database "db" and output tuples of relation "Order"
+const result = ng.evaluate(cp, db, "Order");
+if (result.type === ResultType.RELATION) {
+    console.table([...result.relation.tuples()]);
 }
 
-// free up used memory
-db.close();
+db.close();     // free up used memory
 ```
 
 ## Limitations
