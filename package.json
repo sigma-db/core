@@ -1,6 +1,6 @@
 {
   "name": "@sigma-db/core",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "keywords": [
     "database theory",
