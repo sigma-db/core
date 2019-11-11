@@ -9,6 +9,7 @@
     "target": "esnext",
     "sourceMap": true,
     "removeComments": true,
+    "resolveJsonModule": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noImplicitAny": true,

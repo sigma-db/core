@@ -2,7 +2,7 @@
 import { DuplicateKeyError, SkipList, ArrayList, List } from "../util/list";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
-import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError } from "./errors";
+import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError, ArityMismatchError } from "./errors";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 import { Tuple } from "./tuple";
@@ -139,19 +139,24 @@ export abstract class Relation implements Iterable<Tuple> {
      * Inserts a new tuple into the relation
      * @param tuple The tuple to insert
      */
-    public insert(tuple: Tuple) {
+    public insert(tuple: Tuple): void {
+        const aritiesMatch = this.arity === tuple.length;
+        if (!aritiesMatch) {
+            throw new ArityMismatchError(this._name, tuple, this._schema);
+        }
+
         const limitErrPos = tuple.findIndex((v, i) => v > this._schema[i].max); // check whether all values fit their respective attribute's maximum value
         if (limitErrPos >= 0) {
-            throw new ValueOutOfLimitsError(this.name, tuple, this._schema, limitErrPos);
-        } else {
-            try {
-                this._tuples.insert(tuple);
-            } catch (e) {
-                if (e instanceof DuplicateKeyError) {
-                    throw new DuplicateTupleError(this.name, e.key, this._schema);
-                } else {
-                    throw e;
-                }
+            throw new ValueOutOfLimitsError(this._name, tuple, this._schema, limitErrPos);
+        }
+
+        try {
+            this._tuples.insert(tuple);
+        } catch (e) {
+            if (e instanceof DuplicateKeyError) {
+                throw new DuplicateTupleError(this.name, e.key, this._schema);
+            } else {
+                throw e;
             }
         }
     }
@@ -164,7 +169,8 @@ export abstract class Relation implements Iterable<Tuple> {
         if (this.isSorted) {
             return this;
         } else {
-            return this.mixin(mixinSorted, { throwsOnDuplicate });
+            const tuples = SkipList.from(this._tuples, throwsOnDuplicate);
+            return this.mixin(mixinSorted, { throwsOnDuplicate, tuples });
         }
     }
 
@@ -218,9 +224,8 @@ export abstract class Relation implements Iterable<Tuple> {
     protected init(options?: Partial<Options>): void { }
 
     private mixin(mixin: Mixin, options: Partial<Options>): Relation {
-        const inst = { ...this };
         const ctor = mixin(this.constructor as RelationConstructor);
-        Object.setPrototypeOf(inst, ctor.prototype);
+        const inst = Reflect.construct(ctor, [this._name, this._schema, options.tuples || this._tuples, this._id]);
         inst.init(options);
         return inst;
     }
@@ -230,15 +235,13 @@ export abstract class Relation implements Iterable<Tuple> {
 class _Relation extends Relation { }
 
 const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRelation {
-    protected _tuples: List<Tuple, true>;
     private _boundaries: [bigint[], bigint[], number[], bigint[]];
 
     public get isSorted(): true {
         return true;
     }
 
-    public init(options: Partial<Options>): void {
-        this._tuples = SkipList.from(this._tuples, options.throwsOnDuplicate);
+    public init(): void {
         this._boundaries = [
             this._schema.map(attr => attr.min - 1n),
             this._schema.map(attr => attr.max),
@@ -250,7 +253,7 @@ const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRela
     public gaps(tuple: Tuple): Box[] {
         const gaps: Box[] = [];
         const [min, max, exp, wildcard] = this._boundaries;
-        const [pred, succ] = this._tuples.find(tuple);
+        const [pred, succ] = (this._tuples as List<Tuple, true>).find(tuple);
 
         if (!pred && !succ) {
             // empty relation --> return box covering entire (sub)space
@@ -307,7 +310,7 @@ const mixinLogged: Mixin = BaseRelation => class LoggedRelation extends BaseRela
         const tupleSchema = this._schema.map(() => Type.BIGINT);
         const logSchema = ObjectSchema.create(Type.TUPLE(tupleSchema));
         this._log = options.log;
-        this._log.handle(this._id, logSchema, (tx: bigint[]) => super.insert(Tuple.from(tx)));
+        this._log.handle(this._id, logSchema, (tx: bigint[]) => this._tuples.insert(Tuple.from(tx)));
     }
 
     public insert(tuple: Tuple): void {
