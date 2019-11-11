@@ -57,7 +57,7 @@ export class Database {
         if (!this.hasRelation(rel.name)) {
             this.relations[rel.name] = rel;
         } else {
-            throw new Error(`Relation "${name}" already exists.`);
+            throw new Error(`Relation "${rel.name}" already exists.`);
         }
     }
 

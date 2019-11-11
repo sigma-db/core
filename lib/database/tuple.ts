@@ -38,7 +38,7 @@ export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<T
 
     public readonly length: number;
 
-    public slice(start?: number, end?: number): Array<bigint> {
+    public slice(start: number = 0, end: number = this.length): Array<bigint> {
         return Array.prototype.slice.call(this, start, end);
     }
 
@@ -46,13 +46,12 @@ export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<T
         return Array.prototype.findIndex.call(this, predicate);
     }
 
-    public forEach(callbackfn: (value: bigint, index: number, array: any[]) => void): void {
-        Array.prototype.forEach.call(this, callbackfn);
-    }
-
     public compareTo(other: Tuple): number {
-        const p = this.findIndex((_, i) => this[i] !== other[i]);
-        return p < 0 ? 0 : Number(this[p] - other[p]);
+        let p = 0;
+        while (p < this.length && this[p] === other[p]) {
+            p++;
+        }
+        return p < this.length ? Number(this[p] - other[p]) : 0;
     }
 
     /**

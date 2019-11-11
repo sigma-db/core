@@ -82,7 +82,7 @@ export abstract class Relation implements Iterable<Tuple> {
     constructor(
         protected readonly _name: string,
         protected readonly _schema: Attribute[],
-        protected readonly _tuples: List<Tuple, boolean>,
+        protected _tuples: List<Tuple, boolean>,
         protected readonly _id: number,
     ) { }
 
@@ -169,8 +169,7 @@ export abstract class Relation implements Iterable<Tuple> {
         if (this.isSorted) {
             return this;
         } else {
-            const tuples = SkipList.from(this._tuples, throwsOnDuplicate);
-            return this.mixin(mixinSorted, { throwsOnDuplicate, tuples });
+            return this.mixin(mixinSorted, { throwsOnDuplicate });
         }
     }
 
@@ -225,7 +224,7 @@ export abstract class Relation implements Iterable<Tuple> {
 
     private mixin(mixin: Mixin, options: Partial<Options>): Relation {
         const ctor = mixin(this.constructor as RelationConstructor);
-        const inst = Reflect.construct(ctor, [this._name, this._schema, options.tuples || this._tuples, this._id]);
+        const inst = Object.setPrototypeOf({ ...this }, ctor.prototype);
         inst.init(options);
         return inst;
     }
@@ -241,7 +240,8 @@ const mixinSorted: Mixin = BaseRelation => class SortedRelation extends BaseRela
         return true;
     }
 
-    public init(): void {
+    public init(options: Partial<Options>): void {
+        super._tuples = SkipList.from(this._tuples, options.throwsOnDuplicate);
         this._boundaries = [
             this._schema.map(attr => attr.min - 1n),
             this._schema.map(attr => attr.max),
