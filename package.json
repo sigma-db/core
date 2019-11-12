@@ -17,14 +17,12 @@
     "type": "git",
     "url": "https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB"
   },
-  "readme": "See https://dev.azure.com/dlw/sigmaDB",
   "license": "MIT",
   "engines": {
     "node": ">=11.0.0"
   },
   "devDependencies": {
     "@types/node": "^12.7.8",
-    "pegjs": "^0.11.0-dev.325",
     "typescript": "^3.7.2"
   },
   "scripts": {
