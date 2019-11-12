@@ -1,4 +1,4 @@
-import { TQuery, QueryType, IDumpQuery, IInfoQuery, ICreateQuery, IInsertQuery, ISelectQuery } from "./query-type";
+import { TQuery, QueryType, IDumpQuery, IInfoQuery, ICreateQuery, IInsertQuery, ISelectQuery, ValueType, TTuple, TLiteral, ILiteralValue } from "./query-type";
 import { DataType } from "../database";
 
 class QueryParser {
@@ -228,52 +228,28 @@ class QueryParser {
     }
 
     private parseInsertStatement(): IInsertQuery {
-        var s0, r, s2, s3, s4, t, s6, s7;
-
-        s0 = this.pos;
-        r = this.parseIdentifier();
-        if (r !== this.ERROR) {
-            s2 = this.parseWhitespace();
-            if (this.input.charCodeAt(this.pos) === 40) {
-                s3 = "(";
+        const pos = this.pos;
+        const relName = this.parseIdentifier();
+        if (relName !== this.ERROR) {
+            this.parseWhitespace();
+            if (this.input.charAt(this.pos) === "(") {
                 this.pos++;
-            } else {
-                s3 = this.ERROR;
-            }
-            if (s3 !== this.ERROR) {
-                s4 = this.parseWhitespace();
-                t = this.parseTuple();
+                this.parseWhitespace();
+                const t = this.parseTuple();
                 if (t !== this.ERROR) {
-                    s6 = this.parseWhitespace();
-                    if (this.input.charCodeAt(this.pos) === 41) {
-                        s7 = ")";
+                    this.parseWhitespace();
+                    if (this.input.charAt(this.pos) === ")") {
                         this.pos++;
-                    } else {
-                        s7 = this.ERROR;
+                        return { type: QueryType.INSERT, rel: relName, tuple: t };
                     }
-                    if (s7 !== this.ERROR) {
-                        s0 = { type: "insert", rel: r, tuple: t };
-                    } else {
-                        this.pos = s0;
-                        s0 = this.ERROR;
-                    }
-                } else {
-                    this.pos = s0;
-                    s0 = this.ERROR;
                 }
-            } else {
-                this.pos = s0;
-                s0 = this.ERROR;
             }
-        } else {
-            this.pos = s0;
-            s0 = this.ERROR;
         }
-
-        return s0;
+        this.pos = pos;
+        return this.ERROR;
     }
 
-    private parseTuple() {
+    private parseTuple(): TTuple<ILiteralValue> {
         var s0, head, tail, s3, s4, s5, s6, s7;
 
         s0 = this.pos;
@@ -427,10 +403,9 @@ class QueryParser {
     private parseUnnamedValue() {
         const v = this.parseLiteral();
         if (v !== this.ERROR) {
-            return { type: "literal", value: v };
-        } else {
-            return this.ERROR;
+            return { type: ValueType.LITERAL, value: v };
         }
+        return this.ERROR;
     }
 
     private parseSelectStatement(): ISelectQuery {
@@ -743,12 +718,12 @@ class QueryParser {
     }
 
     private parseNamedAttributeValue() {
-        var s0, a, s2, s3, s4, v;
+        var s0, s3, v;
 
         s0 = this.pos;
-        a = this.parseIdentifier();
-        if (a !== this.ERROR) {
-            s2 = this.parseWhitespace();
+        const attrName = this.parseIdentifier();
+        if (attrName !== this.ERROR) {
+             this.parseWhitespace();
             if (this.input.charCodeAt(this.pos) === 61) {
                 s3 = "=";
                 this.pos++;
@@ -756,10 +731,10 @@ class QueryParser {
                 s3 = this.ERROR;
             }
             if (s3 !== this.ERROR) {
-                s4 = this.parseWhitespace();
+                this.parseWhitespace();
                 v = this.parseAttributeValue();
                 if (v !== this.ERROR) {
-                    s0 = { attr: a, value: v };
+                    s0 = { attr: attrName, value: v };
                 } else {
                     this.pos = s0;
                     s0 = this.ERROR;
@@ -777,24 +752,15 @@ class QueryParser {
     }
 
     private parseAttributeValue() {
-        var s0, v;
-
-        s0 = this.pos;
-        v = this.parseLiteral();
-        if (v !== this.ERROR) {
-            v = { type: "literal", value: v };
+        const literal = this.parseLiteral();
+        if (literal !== this.ERROR) {
+            return { type: ValueType.LITERAL, value: literal };
         }
-        s0 = v;
-        if (s0 === this.ERROR) {
-            s0 = this.pos;
-            v = this.parseIdentifier();
-            if (v !== this.ERROR) {
-                v = { type: "variable", name: v };
-            }
-            s0 = v;
+        const identifier = this.parseIdentifier();
+        if (identifier !== this.ERROR) {
+            return { type: ValueType.VARIABLE, name: identifier };
         }
-
-        return s0;
+        return this.ERROR;
     }
 
     private parseIdentifier(): string {
