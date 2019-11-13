@@ -71,9 +71,9 @@ export abstract class Engine {
     public evaluate(program: Program, db: Database, ans: string, overlay?: boolean): TResult;
 
     public evaluate(query: Query | Program, db: Database, relation?: string, overlay = true): TResult {
-        return query instanceof Program ?
-            this.evaluateProgram(query.statements, db, relation, overlay) :
-            this.evaluateQuery(query.AST, db);
+        return query instanceof Program
+            ? this.evaluateProgram(query.statements, db, relation, overlay)
+            : this.evaluateQuery(query.AST, db);
     }
 
     private evaluateProgram(statements: IterableIterator<TQuery>, db: Database, ans: string, overlay: boolean): TResult {
@@ -155,8 +155,7 @@ export abstract class Engine {
     private onInsert(query: IInsertQuery, db: Database): TSuccessResult {
         let raw: TLiteral[];
         if (query.tuple.type === TupleType.UNNAMED) {
-            const tuple = query.tuple;
-            raw = tuple.values.map(v => v.value);
+            raw = query.tuple.values.map(v => v.value);
         } else {
             const { values } = query.tuple;
             try {

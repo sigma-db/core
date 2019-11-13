@@ -3,7 +3,6 @@
     "declaration": true,
     "declarationMap": true,
     "declarationDir": "types",
-    "allowJs": true,
     "module": "commonjs",
     "outDir": "dist",
     "target": "esnext",

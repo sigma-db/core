@@ -1,6 +1,6 @@
 {
   "name": "@sigma-db/core",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "A relational database engine that incorporates some of the latest findings in database theory.",
   "keywords": [
     "database theory",
@@ -17,21 +17,16 @@
     "type": "git",
     "url": "https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB"
   },
-  "readme": "See https://dev.azure.com/dlw/sigmaDB",
   "license": "MIT",
   "engines": {
     "node": ">=11.0.0"
   },
   "devDependencies": {
     "@types/node": "^12.7.8",
-    "@typescript-eslint/eslint-plugin": "^2.3.1",
-    "@typescript-eslint/parser": "^2.3.1",
-    "eslint": "^6.4.0",
-    "pegjs": "^0.11.0-dev.325",
     "typescript": "^3.7.2"
   },
   "scripts": {
-    "build": "node scripts/grammar.js ./resources ./lib/query/parsers && tsc",
+    "build": "tsc",
     "prepare": "npm run build"
   },
   "bin": {

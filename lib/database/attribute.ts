@@ -1,4 +1,4 @@
-export enum DataType { INT = "int", STRING = "string", CHAR = "char", BOOL = "bool" }
+export const enum DataType { INT, STRING, CHAR, BOOL }
 
 export interface IAttributeLike {
     name: string;

@@ -49,9 +49,9 @@ export default class CLI {
         });
     }
 
-    private isFlagSet(flag: string, defaultValue = true): boolean {
+    private isFlagSet(flag: string): boolean {
         flag = flag.toLowerCase();
-        return defaultValue || flag === "true" || flag === "yes" || flag === "y";
+        return flag === "true" || flag === "yes" || flag === "y";
     }
 
     private toggleMode(preserveCursor = true): void {
@@ -87,11 +87,7 @@ export default class CLI {
                 const { ans, overlay } = opts;
                 try {
                     const program = Program.parse(readFileSync(arg, "utf8"));
-                    if (!ans) {
-                        console.error("You need to specify an answer relation using the \"ans\" paramter.");
-                        return;
-                    }
-                    const result = this.engine.evaluate(program, this.database, ans, this.isFlagSet(overlay));
+                    const result = this.engine.evaluate(program, this.database, ans || "", this.isFlagSet(overlay));
                     this.logResult(result);
                 } catch (e) {
                     console.error(e.message);
