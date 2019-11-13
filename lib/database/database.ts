@@ -119,7 +119,7 @@ class LoggedDatabase extends Database {
         name: Type.STRING,
         attrs: Type.ARRAY(Type.OBJECT({
             name: Type.STRING,
-            type: Type.STRING,
+            type: Type.INT8,
             width: Type.INT16,
         })),
     }));
