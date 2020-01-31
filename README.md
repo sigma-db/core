@@ -28,7 +28,7 @@ Thereafter, you can run sigmaDB from the command line with `sigma --database=</p
 If you want to clone the repository and build sigmaDB from source by yourself, follow these teps:
 
 * Clone the project with `git clone https://dev.azure.com/dlw/sigmaDB/_git/core`.
-* From within the project directory, run `npm install` to download build dependencies such as the [TypeScript](https://www.typescriptlang.org/) compiler and the parser generator [PEG.js](https://pegjs.org/) and build the project.
+* From within the project directory, run `npm install` to download build dependencies and build the project.
 * To make the package accessible from other projects and the command line, run `npm link`.
 
 You can now use sigmaDB as described in [Installation](#installation).

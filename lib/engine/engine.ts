@@ -1,25 +1,24 @@
-import { Attribute, Database, DataType, DatabaseSchema, Relation, Tuple } from "../database";
-import { IAtom, ICreateQuery, IInfoQuery, IInsertQuery, ISelectQuery, IVariableValue, Program, Query, QueryType, TLiteral, TQuery, TupleType, ValueType, IDumpQuery } from "../query";
+import * as Database from "../database";
+import * as Query from "../query";
+import { SkipList } from "../util/list";
+import { IResolvedAtom, TetrisJoin } from "./geometric/tetris-join";
 import { VariableSet } from "./variable-set";
-import { IResolvedAtom, TetrisJoin } from "./geometric";
-import { Projection } from "./common";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
 export const enum ResultType { RELATION, SUCCESS }
 
-type TSuccessResult = { type: ResultType.SUCCESS, success: true } | { type: ResultType.SUCCESS, success: false, message: string };
-type TRelationResult = { type: ResultType.RELATION, relation: Relation };
+type SuccessResult = { type: ResultType.SUCCESS, success: true } | { type: ResultType.SUCCESS, success: false, message: string };
+type RelationResult = { type: ResultType.RELATION, relation: Database.Relation };
 
-const SUCCESS = (): TSuccessResult => ({ type: ResultType.SUCCESS, success: true });
-const ERROR = (message: string): TSuccessResult => ({ type: ResultType.SUCCESS, success: false, message });
-const RELATION = (relation: Relation): TRelationResult => ({ type: ResultType.RELATION, relation });
+const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS, success: true });
+const ERROR = (message: string): SuccessResult => ({ type: ResultType.SUCCESS, success: false, message });
+const RELATION = (relation: Database.Relation): RelationResult => ({ type: ResultType.RELATION, relation });
 
-export type TResult = TRelationResult | TSuccessResult;
+export type Result = RelationResult | SuccessResult;
 
 export abstract class Engine {
     /**
-     * Creates a new instance of an engine that can be subsequently used to
-     * evaluate queries against a database.
+     * Create a new instance of a query evaluation engine.
      * @param type The type of engine to instantiate. Defaults to `GEOMETRIC`.
      */
     public static create(type = EngineType.GEOMETRIC): Engine {
@@ -34,52 +33,34 @@ export abstract class Engine {
      * The schema of the relation generated when asked for the database schema
      */
     private static readonly DATABASE_SCHEMA = [
-        Attribute.create("Relation", DataType.STRING, 32),
-        Attribute.create("Arity", DataType.INT),
-        Attribute.create("Cardinality", DataType.INT),
-        Attribute.create("Sorted", DataType.BOOL),
-        Attribute.create("Logged", DataType.BOOL),
-        Attribute.create("Static", DataType.BOOL),
+        Database.Attribute.create("Relation", Database.DataType.STRING, 32),
+        Database.Attribute.create("Arity", Database.DataType.INT),
+        Database.Attribute.create("Cardinality", Database.DataType.INT),
+        Database.Attribute.create("Sorted", Database.DataType.BOOL),
+        Database.Attribute.create("Logged", Database.DataType.BOOL),
+        Database.Attribute.create("Static", Database.DataType.BOOL),
     ];
 
     /**
      * The schema of the relation generated when asked for a specifiec relation's schema
      */
     private static readonly RELATION_SCHEMA = [
-        Attribute.create("Attribute", DataType.STRING, 32),
-        Attribute.create("Data Type", DataType.STRING, 8),
-        Attribute.create("Width", DataType.INT),
+        Database.Attribute.create("Attribute", Database.DataType.STRING, 32),
+        Database.Attribute.create("Data Type", Database.DataType.STRING, 8),
+        Database.Attribute.create("Width", Database.DataType.INT),
     ];
 
     /**
-     * Given a query and a database, evaluates the query on the database
-     * and, depending on the query, returns a resulting relation or nothing.
-     * @param query The query to evaluate
+     * Given a program and a database, evaluates the program on the database.
+     * @param input The queries to evaluate
      * @param db The database to evaluate the query on
+     * @param overlay Whether the evaluation should happen on an overlay instance or on `db` itself
      */
-    public evaluate(query: Query, db: Database): TResult;
-
-    /**
-     * Given a program and a database, evaluates the program on the database
-     * and, depending on whether a result relation is specified,
-     * returns the relation or only a success message.
-     * @param program The program to evaluate
-     * @param db The database to evaluate the query on
-     * @param ans The name of the relation to return after evaluation of the program
-     * @param overlay Whether the evaluation should happen on an overlay database or the database `db` itself
-     */
-    public evaluate(program: Program, db: Database, ans: string, overlay?: boolean): TResult;
-
-    public evaluate(query: Query | Program, db: Database, relation?: string, overlay = true): TResult {
-        return query instanceof Program
-            ? this.evaluateProgram(query.statements, db, relation, overlay)
-            : this.evaluateQuery(query.AST, db);
-    }
-
-    private evaluateProgram(statements: IterableIterator<TQuery>, db: Database, ans: string, overlay: boolean): TResult {
+    public evaluate(statements: Iterable<Query.Statement>, db: Database.Instance, overlay = false): Result {
         db = overlay ? db.overlay() : db;
+        let result: Result = SUCCESS();
         for (const statement of statements) {
-            const result = this.evaluateQuery(statement, db);
+            result = this.evaluateStatement(statement, db);
             if (result.type === ResultType.RELATION) {
                 try {
                     db.addRelation(result.relation);
@@ -90,34 +71,40 @@ export abstract class Engine {
                 return result;
             }
         }
-        if (!!ans) {
-            return RELATION(db.getRelation(ans));
-        }
-        return SUCCESS();
+        return result;
     }
 
-    private evaluateQuery(query: TQuery, db: Database): TResult {
-        switch (query.type) {
-            case QueryType.INSERT: return this.onInsert(query, db);
-            case QueryType.SELECT: return this.onSelect(query, db);
-            case QueryType.CREATE: return this.onCreate(query, db);
-            case QueryType.INFO: return this.onInfo(query, db);
-            case QueryType.DUMP: return this.onDump(query, db);
+    private evaluateStatement(statement: Query.Statement, db: Database.Instance): Result {
+        switch (statement.type) {
+            case Query.StatementType.INSERT: return this.onInsert(statement, db);
+            case Query.StatementType.SELECT: return this.onSelect(statement, db);
+            case Query.StatementType.CREATE: return this.onCreate(statement, db);
+            case Query.StatementType.INFO: return this.onInfo(statement, db);
+            case Query.StatementType.DUMP: return this.onDump(statement, db);
             default: throw new Error("Unsupported query type");
         }
     }
 
-    protected abstract onSelect(query: ISelectQuery, db: Database): TResult;
+    protected abstract onSelect(statement: Query.SelectStatement, db: Database.Instance): Result;
 
-    protected resolve(cqatoms: IAtom[], schema: DatabaseSchema): [VariableSet, IResolvedAtom[]] {
+    protected project(tuples: SkipList<Database.Tuple>, map: number[]): SkipList<Database.Tuple> {
+        const result = new SkipList<Database.Tuple>();
+        for (const tuple of tuples) {
+            const _tuple = Database.Tuple.from(map.map(p => tuple[p]));
+            result.insert(_tuple);
+        }
+        return result;
+    }
+
+    protected resolve(cqatoms: Query.Atom[], schema: Database.Schema): [VariableSet, IResolvedAtom[]] {
         const valset = new VariableSet();
         const atoms = cqatoms.map(({ rel, tuple }) => {
-            if (tuple.type === TupleType.UNNAMED) {
+            if (tuple.type === Query.TupleType.UNNAMED) {
                 return {
                     rel: schema[rel],
                     vars: tuple.values.map((v, i) => {
                         const { type, width } = schema[rel].schema[i];
-                        if (v.type === ValueType.VARIABLE) {
+                        if (v.type === Query.ValueType.VARIABLE) {
                             return valset.variable(type, width, v.name);
                         } else {
                             throw new Error("Constants are not yet supported!");
@@ -131,7 +118,7 @@ export abstract class Engine {
                         const v = tuple.values.find(val => val.attr === spec.name);
                         if (!v) {
                             return valset.variable(spec.type, spec.width);
-                        } else if (v.value.type === ValueType.VARIABLE) {
+                        } else if (v.value.type === Query.ValueType.VARIABLE) {
                             return valset.variable(spec.type, spec.width, v.value.name);
                         } else {
                             throw new Error("Constants are not yet supported!");
@@ -143,49 +130,49 @@ export abstract class Engine {
         return [valset, atoms];
     }
 
-    private onCreate(query: ICreateQuery, db: Database): TSuccessResult {
+    private onCreate(statement: Query.CreateStatement, db: Database.Instance): SuccessResult {
         try {
-            db.createRelation(query.rel, query.attrs.map(spec => Attribute.from(spec)));
+            db.createRelation(statement.rel, statement.attrs.map(spec => Database.Attribute.from(spec)));
             return SUCCESS();
         } catch (e) {
             return ERROR(e.message);
         }
     }
 
-    private onInsert(query: IInsertQuery, db: Database): TSuccessResult {
-        let raw: TLiteral[];
-        if (query.tuple.type === TupleType.UNNAMED) {
-            raw = query.tuple.values.map(v => v.value);
+    private onInsert(statement: Query.InsertStatement, db: Database.Instance): SuccessResult {
+        let raw: Query.Literal[];
+        if (statement.tuple.type === Query.TupleType.UNNAMED) {
+            raw = statement.tuple.values.map(v => v.value);
         } else {
-            const { values } = query.tuple;
+            const { values } = statement.tuple;
             try {
-                raw = db.getRelation(query.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
+                raw = db.getRelation(statement.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
             } catch (e) {
                 return ERROR(e.message);
             }
         }
-        const _tuple = Tuple.from(raw);
+        const _tuple = Database.Tuple.from(raw);
         try {
-            db.getRelation(query.rel).insert(_tuple);
+            db.getRelation(statement.rel).insert(_tuple);
         } catch (e) {
             return ERROR(e.message);
         }
         return SUCCESS();
     }
 
-    private onInfo(query: IInfoQuery, db: Database): TResult {
-        let result: Relation;
-        if (!query.rel) {
-            result = Relation.create("Database Schema", Engine.DATABASE_SCHEMA);
+    private onInfo(statement: Query.InfoStatement, db: Database.Instance): Result {
+        let result: Database.Relation;
+        if (!statement.rel) {
+            result = Database.Relation.create("Database Schema", Engine.DATABASE_SCHEMA);
             Object.entries(db.schema).forEach(([, rel]) => {
-                const tuple = Tuple.create([rel.name, rel.arity, rel.size, rel.isSorted, rel.isLogged, rel.isStatic]);
+                const tuple = Database.Tuple.create([rel.name, rel.arity, rel.size, rel.isSorted, rel.isLogged, rel.isStatic]);
                 result.insert(tuple);
             });
         } else {
-            result = Relation.create(`Relation Schema of "${query.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
+            result = Database.Relation.create(`Relation Schema of "${statement.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             try {
-                db.getRelation(query.rel).schema.forEach(attr => {
-                    const tuple = Tuple.create([attr.name, attr.type, attr.width]);
+                db.getRelation(statement.rel).schema.forEach(attr => {
+                    const tuple = Database.Tuple.create([attr.name, attr.type, attr.width]);
                     result.insert(tuple);
                 });
             } catch (e) {
@@ -195,9 +182,9 @@ export abstract class Engine {
         return RELATION(result.static());
     }
 
-    private onDump(query: IDumpQuery, db: Database): TResult {
+    private onDump(statement: Query.DumpStatement, db: Database.Instance): Result {
         try {
-            return RELATION(db.getRelation(query.rel).static());
+            return RELATION(db.getRelation(statement.rel).static());
         } catch (e) {
             return ERROR(e.message);
         }
@@ -205,15 +192,15 @@ export abstract class Engine {
 }
 
 export class GeometricEngine extends Engine {
-    protected onSelect(query: ISelectQuery, db: Database): TResult {
-        const [vars, atoms] = super.resolve(query.body, db.schema);
-        const queryAttrs = query.exports as Array<{ attr: string, value: IVariableValue }>;
-        const schema = queryAttrs.map(({ attr, value }) => Attribute.create(attr, vars.get(value.name).type, vars.get(value.name).width));
+    protected onSelect(statement: Query.SelectStatement, db: Database.Instance): Result {
+        const [vars, atoms] = super.resolve(statement.body, db.schema);
+        const queryAttrs = statement.exports as Array<{ attr: string, value: Query.VariableValue }>;
+        const schema = queryAttrs.map(({ attr, value }) => Database.Attribute.create(attr, vars.get(value.name).type, vars.get(value.name).width));
         const prjSchema = queryAttrs.map(({ value }) => vars.get(value.name).id);
 
         const joined = TetrisJoin.execute(atoms, vars);
-        const projected = Projection.execute(joined, prjSchema);
-        const result = Relation.create(query.name, schema, { tuples: projected });
+        const projected = super.project(joined, prjSchema);
+        const result = Database.Relation.create(statement.name, schema, { tuples: projected });
 
         return RELATION(result.static());
     }

@@ -1,19 +1,35 @@
-import { TQuery, QueryType, IDumpQuery, IInfoQuery, ICreateQuery, IInsertQuery, ISelectQuery, ValueType, TTuple, ILiteralValue, TValue, TupleType, IVariableValue } from "./query-type";
-import { DataType, IAttributeLike } from "../database";
+import { Readable } from "stream";
+import { IAttributeLike, DataType } from "../database";
+import * as stmt from "./statement";
 
-class QueryParser {
-    public readonly ERROR: never;
+export class Parser implements Iterable<stmt.Statement> {
+    private readonly ERROR: never;
     private pos = 0;
 
-    constructor(private input: string) { }
+    public static create(input: Readable): Parser {
+        return new Parser(input);
+    }
 
-    public *parseProgram(): IterableIterator<TQuery> {
+    public *[Symbol.iterator](): IterableIterator<stmt.Statement> {
+        const parser = new Parser(input);
+        const result = parser.parse();
+
+        if (result !== parser.ERROR && parser.isEnd) {
+            return result;
+        } else {
+            throw new Error("Could not process input until end.");
+        }
+    }
+
+    private constructor(private input: string) { }
+
+    private *parse(): IterableIterator<stmt.Statement> {
         while (!this.isEnd) {
             this.parseWhitespace();
             if (this.parseComment() === this.ERROR) {
                 const pos = this.pos;
                 const stmt = this.parseStatement();
-                if (stmt !== this.ERROR && (this.parseWhitespace(), this.input.charAt(this.pos) === ".")) {
+                if (stmt !== this.ERROR && (this.parseWhitespace(), this.input.charCodeAt(this.pos) === 0x2E)) {
                     this.pos++;
                     yield stmt;
                 } else {
@@ -25,31 +41,16 @@ class QueryParser {
         }
     }
 
-    public parseQuery(): TQuery {
-        const pos = this.pos;
-        this.parseWhitespace();
-        const stmt = this.parseStatement();
-        if (stmt !== this.ERROR) {
-            this.parseWhitespace();
-            return stmt;
-        }
-        this.pos = pos;
-        return this.ERROR;
-    }
-
     private parseComment(): void {
-        if (this.input.charAt(this.pos) === "%") {
+        if (this.input.charCodeAt(this.pos) === 0x25) {
+            while (this.input.charCodeAt(++this.pos) !== 0x0A);
             this.pos++;
-            while (this.input.charAt(this.pos) !== "\n") {
-                this.pos++;
-            }
-            this.pos++;
-            return;
+        } else {
+            return this.ERROR;
         }
-        return this.ERROR;
     }
 
-    private parseStatement(): TQuery {
+    private parseStatement(): stmt.Statement {
         return this.parseInsertStatement()
             || this.parseCreateStatement()
             || this.parseSelectStatement()
@@ -57,32 +58,32 @@ class QueryParser {
             || this.parseDumpStatement();
     }
 
-    private parseInsertStatement(): IInsertQuery {
+    private parseInsertStatement(): stmt.InsertStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
             this.parseWhitespace();
-            const tuple = this.parseValueTuple((): ILiteralValue => {
+            const tuple = this.parseValueTuple((): stmt.LiteralValue => {
                 const value = this.parseLiteral();
                 if (value !== this.ERROR) {
-                    return { type: ValueType.LITERAL, value };
+                    return { type: stmt.ValueType.LITERAL, value };
                 }
                 return this.ERROR;
             });
             if (tuple !== this.ERROR) {
-                return { type: QueryType.INSERT, rel, tuple };
+                return { type: stmt.StatementType.INSERT, rel, tuple };
             }
         }
         this.pos = pos;
         return this.ERROR;
     }
 
-    private parseCreateStatement(): ICreateQuery {
+    private parseCreateStatement(): stmt.CreateStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
             this.parseWhitespace();
-            if (this.input.charAt(this.pos) === ":") {
+            if (this.input.charCodeAt(this.pos) === 0x3A) {
                 this.pos++;
                 this.parseWhitespace();
                 const attrs = this.parseTuple((): IAttributeLike => {
@@ -90,7 +91,7 @@ class QueryParser {
                     const name = this.parseIdentifier();
                     if (name !== this.ERROR) {
                         this.parseWhitespace();
-                        if (this.input.charAt(this.pos) === ":") {
+                        if (this.input.charCodeAt(this.pos) === 0x3A) {
                             this.pos++;
                             this.parseWhitespace();
                             const value = this.parseTypeName();
@@ -103,7 +104,7 @@ class QueryParser {
                     return this.ERROR;
                 });
                 if (attrs !== this.ERROR) {
-                    return { type: QueryType.CREATE, rel, attrs }
+                    return { type: stmt.StatementType.CREATE, rel, attrs }
                 }
             }
         }
@@ -111,15 +112,15 @@ class QueryParser {
         return this.ERROR;
     }
 
-    private parseSelectStatement(): ISelectQuery {
+    private parseSelectStatement(): stmt.SelectStatement {
         const pos = this.pos;
         const name = this.parseIdentifier();
         if (name !== this.ERROR) {
             this.parseWhitespace();
-            const exports = this.parseTuple((): { attr: string, value: IVariableValue } => {
+            const exports = this.parseTuple((): { attr: string, value: stmt.VariableValue } => {
                 const value = this.parseNamedValue(() => this.parseIdentifier());
                 if (value !== this.ERROR) {
-                    return { attr: value.attr, value: { type: ValueType.VARIABLE, name: value.value } };
+                    return { attr: value.attr, value: { type: stmt.ValueType.VARIABLE, name: value.value } };
                 }
                 return this.ERROR;
             });
@@ -131,14 +132,14 @@ class QueryParser {
                         const rel = this.parseIdentifier();
                         if (rel !== this.ERROR) {
                             this.parseWhitespace();
-                            const tuple = this.parseValueTuple((): TValue => {
+                            const tuple = this.parseValueTuple((): stmt.Value => {
                                 const literal = this.parseLiteral();
                                 if (literal !== this.ERROR) {
-                                    return { type: ValueType.LITERAL, value: literal };
+                                    return { type: stmt.ValueType.LITERAL, value: literal };
                                 }
                                 const identifier = this.parseIdentifier();
                                 if (identifier !== this.ERROR) {
-                                    return { type: ValueType.VARIABLE, name: identifier };
+                                    return { type: stmt.ValueType.VARIABLE, name: identifier };
                                 }
                                 return this.ERROR;
                             });
@@ -149,7 +150,7 @@ class QueryParser {
                         return this.ERROR;
                     });
                     if (body !== this.ERROR) {
-                        return { type: QueryType.SELECT, exports, name, body };
+                        return { type: stmt.StatementType.SELECT, exports, name, body };
                     }
                 }
             }
@@ -158,30 +159,30 @@ class QueryParser {
         return this.ERROR;
     }
 
-    private parseInfoStatement(): IInfoQuery {
+    private parseInfoStatement(): stmt.InfoStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         this.parseWhitespace();
-        if (this.input.charAt(this.pos) === "?") {
+        if (this.input.charCodeAt(this.pos) === 0x3F) {
             this.pos++;
             if (rel === this.ERROR) {
-                return { type: QueryType.INFO }
+                return { type: stmt.StatementType.INFO }
             } else {
-                return { type: QueryType.INFO, rel };
+                return { type: stmt.StatementType.INFO, rel };
             }
         }
         this.pos = pos;
         return this.ERROR;
     }
 
-    private parseDumpStatement(): IDumpQuery {
+    private parseDumpStatement(): stmt.DumpStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
             this.parseWhitespace();
-            if (this.input.charAt(this.pos) === "!") {
+            if (this.input.charCodeAt(this.pos) === 0x21) {
                 this.pos++;
-                return { type: QueryType.DUMP, rel };
+                return { type: stmt.StatementType.DUMP, rel };
             }
         }
         this.pos = pos;
@@ -193,7 +194,7 @@ class QueryParser {
         const attr = this.parseIdentifier();
         if (attr !== this.ERROR) {
             this.parseWhitespace();
-            if (this.input.charAt(this.pos) === "=") {
+            if (this.input.charCodeAt(this.pos) === 0x3D) {
                 this.pos++;
                 this.parseWhitespace();
                 const value = valueParser();
@@ -206,15 +207,15 @@ class QueryParser {
         return this.ERROR;
     }
 
-    private parseValueTuple<T extends TValue>(valueParser: () => T): TTuple<T> {
+    private parseValueTuple<T extends stmt.Value>(valueParser: () => T): stmt.Tuple<T> {
         const unnamedTuple = this.parseTuple((): T => valueParser());
         if (unnamedTuple !== this.ERROR) {
-            return { type: TupleType.UNNAMED, values: unnamedTuple };
+            return { type: stmt.TupleType.UNNAMED, values: unnamedTuple };
         }
 
         const namedTuple = this.parseTuple((): { attr: string, value: T } => this.parseNamedValue(() => valueParser()));
         if (namedTuple !== this.ERROR) {
-            return { type: TupleType.NAMED, values: namedTuple };
+            return { type: stmt.TupleType.NAMED, values: namedTuple };
         }
 
         return this.ERROR;
@@ -222,11 +223,11 @@ class QueryParser {
 
     private parseTuple<T>(valueParser: () => T): T[] {
         const pos = this.pos;
-        if (this.input.charAt(this.pos) === "(") {
+        if (this.input.charCodeAt(this.pos) === 0x28) {
             this.pos++;
             this.parseWhitespace();
             const values = this.parseList((): T => valueParser());
-            if (values !== this.ERROR && this.parseWhitespace(), this.input.charAt(this.pos) === ")") {
+            if (values !== this.ERROR && this.parseWhitespace(), this.input.charCodeAt(this.pos) === 0x29) {
                 this.pos++;
                 return values;
             }
@@ -244,7 +245,7 @@ class QueryParser {
             values.push(value);
             pos = this.pos;
             this.parseWhitespace();
-            if (this.input.charAt(this.pos) === ",") {
+            if (this.input.charCodeAt(this.pos) === 0x2C) {
                 this.pos++;
                 this.parseWhitespace();
                 value = valueParser();
@@ -279,14 +280,14 @@ class QueryParser {
         } else if (this.input.charCodeAt(this.pos) === 48) {    // parse the integer 0
             this.pos++;
             return 0n;
-        } else if (this.input.charAt(this.pos) === "\"") {      // parse a string
+        } else if (this.input.charCodeAt(this.pos) === 0x22) {      // parse a string
             let str = 0n;
-            while (this.input.charAt(++this.pos) !== "\"") {
+            while (this.input.charCodeAt(++this.pos) !== 0x22) {
                 str = (str << 8n) + BigInt(this.input.charCodeAt(this.pos) & 0xFF);
             }
             this.pos++;
             return str;
-        } else if (this.input.charAt(this.pos) === "'" && this.input.charAt(this.pos + 2) === "'") {       // parse a char
+        } else if (this.input.charCodeAt(this.pos) === 0x27 && this.input.charCodeAt(this.pos + 2) === 0x27) {       // parse a char
             this.pos += 3;
             return BigInt(this.input.charCodeAt(this.pos - 2));
         } else if (this.parseString("true")) {           // parse a boolean true
@@ -319,7 +320,7 @@ class QueryParser {
     private parseWidthExpression(defaultWidth: number): number {
         const pos = this.pos;
         this.parseWhitespace();
-        if (this.input.charAt(this.pos) === "(") {
+        if (this.input.charCodeAt(this.pos) === 0x28) {
             this.pos++;
             this.parseWhitespace();
             if (this.input.charCodeAt(this.pos) >= 49 && this.input.charCodeAt(this.pos) <= 57) {
@@ -328,7 +329,7 @@ class QueryParser {
                     num = num * 10 + this.input.charCodeAt(this.pos++) - 48;
                 }
                 this.parseWhitespace();
-                if (this.input.charAt(this.pos) === ")") {
+                if (this.input.charCodeAt(this.pos) === 0x29) {
                     this.pos++;
                     return num;
                 }
@@ -353,48 +354,7 @@ class QueryParser {
         }
     }
 
-    public get isEnd(): boolean {
+    private get isEnd(): boolean {
         return this.pos >= this.input.length;
-    }
-}
-
-export class Query {
-    /**
-     * Turns the string representation of a query into an internal object
-     * @param input The query or script to parse
-     */
-    public static parse(input: string): Query {
-        const parser = new QueryParser(input);
-        const result = parser.parseQuery();
-
-        if (result !== parser.ERROR && parser.isEnd) {
-            return new Query(result);
-        } else {
-            throw new Error("Could not process input until end.");
-        }
-    }
-
-    protected constructor(private readonly _ast: TQuery) { }
-
-    public get AST(): TQuery {
-        return this._ast;
-    }
-}
-
-export class Program {
-    /**
-     * Turns the string representation of a script into an internal object
-     * @param input The query or script to parse
-     */
-    public static parse(input: string): Program {
-        const parser = new QueryParser(input);
-        const result = parser.parseProgram();
-        return new Program(result);
-    }
-
-    constructor(private readonly _ast: IterableIterator<TQuery>) { }
-
-    public get statements(): IterableIterator<TQuery> {
-        return this._ast;
     }
 }

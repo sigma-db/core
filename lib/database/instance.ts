@@ -3,28 +3,28 @@ import { Relation } from "./relation";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 
-export interface DatabaseSchema {
+export interface Schema {
     [name: string]: Relation;
 }
 
-export class Database {
+export class Instance {
     /**
-     * Opens an existing database stored at the specified location
+     * Opens an existing database instance stored at the specified location
      * or creates a new one if it does not yet exist.
      */
-    public static open(path: string): Database {
+    public static open(path: string): Instance {
         const log = TransactionLog.open(path);
-        return new LoggedDatabase(log);
+        return new LoggedInstance(log);
     }
 
     /**
-     * Creates a temporary database with no logging to disk.
+     * Creates a temporary database instance with no logging to disk.
      */
-    public static temp(): Database {
-        return new Database();
+    public static temp(): Instance {
+        return new Instance();
     }
 
-    protected readonly relations: DatabaseSchema = {};
+    protected readonly relations: Schema = {};
 
     protected constructor() { }
 
@@ -32,25 +32,25 @@ export class Database {
      * Whether modification to this instance are logged
      */
     public get isLogged(): boolean {
-        return this instanceof LoggedDatabase;
+        return this instanceof LoggedInstance;
     }
 
     /**
-     * Whether this instance overlays another database object
+     * Whether this instance overlays another database instance object
      */
     public get isOverlay(): boolean {
-        return this instanceof OverlayDatabase;
+        return this instanceof OverlayInstance;
     }
 
     /**
-     * The current schema of the database
+     * The current schema of the database instance
      */
-    public get schema(): DatabaseSchema {
+    public get schema(): Schema {
         return Object.assign({}, this.relations);
     }
 
     /**
-     * Adds an existing relation to the database
+     * Adds an existing relation to the database instance
      * @param rel The relation object
      */
     public addRelation(rel: Relation): void {
@@ -71,7 +71,7 @@ export class Database {
     }
 
     /**
-     * Checks whether a relation of name `rel` already exists on this database.
+     * Checks whether relation `rel` exists on this database instance
      * @param name The relation name to check
      */
     public hasRelation(name: string): boolean {
@@ -86,20 +86,20 @@ export class Database {
         if (name in this.relations) {
             return this.relations[name];
         } else {
-            throw new Error(`Relation ${name} does not exist in this database.`);
+            throw new Error(`Relation ${name} does not exist in this database instance.`);
         }
     }
 
     /**
-     * Creates an overlay on top of this database, sharing the same state,
-     * but with any modification made to the overlay not being applied to the underlying database.
+     * Creates an overlay on top of this database instance, sharing the same state,
+     * but with any modification made to the overlay not being applied to the underlying database instance.
      */
-    public overlay(): OverlayDatabase {
-        return new OverlayDatabase(this);
+    public overlay(): OverlayInstance {
+        return new OverlayInstance(this);
     }
 
     /**
-     * Closes the database
+     * Closes the database instance
      */
     public close(): void { }
 
@@ -113,7 +113,7 @@ interface ICreateTransaction {
     attrs: IAttributeLike[];
 }
 
-class LoggedDatabase extends Database {
+class LoggedInstance extends Instance {
     private static readonly CREATION_ID = 0;
     private static readonly CREATION_SCHEMA = ObjectSchema.create(Type.OBJECT({
         name: Type.STRING,
@@ -126,7 +126,7 @@ class LoggedDatabase extends Database {
 
     constructor(private readonly log: TransactionLog) {
         super();
-        log.handle<ICreateTransaction>(LoggedDatabase.CREATION_ID, LoggedDatabase.CREATION_SCHEMA, tx => {
+        log.handle<ICreateTransaction>(LoggedInstance.CREATION_ID, LoggedInstance.CREATION_SCHEMA, tx => {
             const { name, attrs } = tx;
             const _attrs = attrs.map(attr => Attribute.from(attr));
             super.createRelation(name, _attrs);
@@ -136,7 +136,7 @@ class LoggedDatabase extends Database {
 
     public createRelation(name: string, schema: Attribute[]): void {
         super.createRelation(name, schema);
-        this.log.write<ICreateTransaction>(LoggedDatabase.CREATION_ID, { name, attrs: schema });
+        this.log.write<ICreateTransaction>(LoggedInstance.CREATION_ID, { name, attrs: schema });
     }
 
     public close(): void {
@@ -148,18 +148,18 @@ class LoggedDatabase extends Database {
     }
 }
 
-class OverlayDatabase extends Database {
-    constructor(private readonly parent: Database) {
+class OverlayInstance extends Instance {
+    constructor(private readonly parent: Instance) {
         super();
     }
 
     public getRelation(name: string): Relation {
         if (name in this.relations) {   // this db contains the given relation
             return this.relations[name];
-        } else if (this.parent.hasRelation(name)) {     // an ancestor contains the given relation
+        } else if (this.parent.hasRelation(name)) { // an ancestor contains the given relation
             return this.parent.getRelation(name);
         } else {
-            throw new Error(`Relation ${name} does not exist in this database.`);
+            throw new Error(`Relation ${name} does not exist in this database instance.`);
         }
     }
 

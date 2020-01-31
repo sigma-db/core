@@ -2,18 +2,22 @@ interface MapLike {
     [key: string]: string;
 }
 
-interface CommandLike {
+interface Command {
     cmd: string;
     arg: string;
     opts: MapLike;
 }
 
-class CommandParser {
+export class CommandParser {
+    public static parse(input: string): Command {
+        return new this(input).parseCommand();
+    }
+
     private pos = 0;
 
-    constructor(private readonly input: string) { }
+    private constructor(private readonly input: string) { }
 
-    public parseCommand(): CommandLike {
+    public parseCommand(): Command {
         let cmd: string, arg: string, opts: MapLike = {};
 
         // ignore leading whitespace
@@ -121,26 +125,5 @@ class CommandParser {
      */
     private get isEnd(): boolean {
         return this.pos >= this.input.length;
-    }
-}
-
-export class Command {
-    public static parse(input: string): Command {
-        const { cmd, arg, opts } = new CommandParser(input).parseCommand();
-        return new Command(cmd, arg, opts);
-    }
-
-    private constructor(private readonly _cmd: string, private readonly _arg?: string, private readonly _opts?: MapLike) { }
-
-    public get cmd(): string {
-        return this._cmd;
-    }
-
-    public get arg(): string {
-        return this._arg;
-    }
-
-    public get opts(): MapLike {
-        return this._opts;
     }
 }
