@@ -1,37 +1,36 @@
-import { Readable } from "stream";
 import { IAttributeLike, DataType } from "../database";
 import * as stmt from "./statement";
 
-export class Parser implements Iterable<stmt.Statement> {
+export interface ParserOpts {
+    onStatement: (statement: stmt.Statement) => void;
+}
+
+export class Parser {
     private readonly ERROR: never;
-    private pos = 0;
+    private pos: number = 0;
+    private input: string = "";
 
-    public static create(input: Readable): Parser {
-        return new Parser(input);
+    public static create(opts: ParserOpts): Parser {
+        return new Parser(opts.onStatement);
     }
 
-    public *[Symbol.iterator](): IterableIterator<stmt.Statement> {
-        const parser = new Parser(input);
-        const result = parser.parse();
-
-        if (result !== parser.ERROR && parser.isEnd) {
-            return result;
-        } else {
-            throw new Error("Could not process input until end.");
-        }
+    public read(data: string): void {
+        this.pos = this.input.length - this.pos;
+        this.input = this.input.substring(this.input.length - this.pos) + data;
+        this.parse();
     }
 
-    private constructor(private input: string) { }
+    private constructor(private readonly handler: (statement: stmt.Statement) => void) { }
 
-    private *parse(): IterableIterator<stmt.Statement> {
-        while (!this.isEnd) {
+    private parse(): void {
+        while (this.pos < this.input.length) {
             this.parseWhitespace();
             if (this.parseComment() === this.ERROR) {
                 const pos = this.pos;
                 const stmt = this.parseStatement();
                 if (stmt !== this.ERROR && (this.parseWhitespace(), this.input.charCodeAt(this.pos) === 0x2E)) {
                     this.pos++;
-                    yield stmt;
+                    this.handler(stmt);
                 } else {
                     this.pos = pos;
                     return this.ERROR;
@@ -352,9 +351,5 @@ export class Parser implements Iterable<stmt.Statement> {
         while (/^[ \t\r\n]/.test(this.input.charAt(this.pos))) {
             this.pos++;
         }
-    }
-
-    private get isEnd(): boolean {
-        return this.pos >= this.input.length;
     }
 }

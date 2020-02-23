@@ -1,5 +1,5 @@
-﻿import { Box } from "../../database";
-import { DyadicTrie } from "../../util";
+﻿import { Box } from "../database";
+import { DyadicTrie } from "../util";
 
 export class CDS {
     private readonly data: DyadicTrie<any>;
@@ -10,7 +10,7 @@ export class CDS {
 
     /**
      * Inserts a new box into the CDS
-     * @param boxes The box to insert
+     * @param box The box to insert
      */
     public insert(box: Box): void {
         let trie = this.data;

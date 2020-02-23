@@ -1,7 +1,7 @@
-import { Attribute, Box, Relation, Tuple } from "../../database";
-import { SkipList } from "../../util/list";
-import { TypedVariable } from "../typed-variable";
-import { VariableSet } from "../variable-set";
+import { Attribute, Box, Relation, Tuple } from "../database";
+import { SkipList } from "../util/list";
+import { TypedVariable } from "./typed-variable";
+import { VariableSet } from "./variable-set";
 import { CDS } from "./cds";
 
 export interface IResolvedAtom {

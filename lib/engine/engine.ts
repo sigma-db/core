@@ -1,7 +1,7 @@
 import * as Database from "../database";
 import * as Query from "../query";
 import { SkipList } from "../util/list";
-import { IResolvedAtom, TetrisJoin } from "./geometric/tetris-join";
+import { IResolvedAtom, TetrisJoin } from "./tetris-join";
 import { VariableSet } from "./variable-set";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
@@ -16,15 +16,20 @@ const RELATION = (relation: Database.Relation): RelationResult => ({ type: Resul
 
 export type Result = RelationResult | SuccessResult;
 
+export interface EngineOpts {
+    type: EngineType;
+    onResult: (result: Result) => void;
+}
+
 export abstract class Engine {
     /**
      * Create a new instance of a query evaluation engine.
      * @param type The type of engine to instantiate. Defaults to `GEOMETRIC`.
      */
-    public static create(type = EngineType.GEOMETRIC): Engine {
-        switch (type) {
+    public static create(opts: Partial<EngineOpts> = { type: EngineType.GEOMETRIC }): Engine {
+        switch (opts.type) {
             case EngineType.ALGEBRAIC: return null;
-            case EngineType.GEOMETRIC: return new GeometricEngine();
+            case EngineType.GEOMETRIC: return new GeometricEngine(opts.onResult || (statement => void 0));
             default: throw new Error("Unsupported engine type");
         }
     }
@@ -50,28 +55,23 @@ export abstract class Engine {
         Database.Attribute.create("Width", Database.DataType.INT),
     ];
 
+    protected constructor(private resultHandler: (result: Result) => void) { }
+
     /**
-     * Given a program and a database, evaluates the program on the database.
-     * @param input The queries to evaluate
-     * @param db The database to evaluate the query on
-     * @param overlay Whether the evaluation should happen on an overlay instance or on `db` itself
+     * Given a statement and a database, evaluates the statement on the database.
+     * @param input The statement to evaluate
+     * @param db The database to evaluate the statement on
      */
-    public evaluate(statements: Iterable<Query.Statement>, db: Database.Instance, overlay = false): Result {
-        db = overlay ? db.overlay() : db;
-        let result: Result = SUCCESS();
-        for (const statement of statements) {
-            result = this.evaluateStatement(statement, db);
-            if (result.type === ResultType.RELATION) {
-                try {
-                    db.addRelation(result.relation);
-                } catch (e) {
-                    return ERROR(e.message);
-                }
-            } else if (!result.success) {
-                return result;
+    public evaluate(statement: Query.Statement, db: Database.Instance): void {
+        const result = this.evaluateStatement(statement, db);
+        if (result.type === ResultType.RELATION) {
+            try {
+                db.addRelation(result.relation);
+            } catch (e) {
+                this.resultHandler(ERROR(e.message));
             }
         }
-        return result;
+        this.resultHandler(result);
     }
 
     private evaluateStatement(statement: Query.Statement, db: Database.Instance): Result {

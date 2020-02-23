@@ -1,4 +1,4 @@
-﻿# ![logo](./assets/sigmaDB.png =300x75)
+﻿# sigmaDB
 
 [![NPM](https://img.shields.io/npm/v/@sigma-db/core)](https://www.npmjs.com/package/@sigma-db/core)
 [![Dependencies](https://david-dm.org/dlw93/sigmaDB/status.svg)](https://david-dm.org/dlw93/sigmaDB)
@@ -81,22 +81,32 @@ Order(master=x, servant=y) <-
 Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:
 
 ```TypeScript
-import { Database, Engine, Program, ResultType } from "sigma";
+import { Instance, Engine, Program, ResultType } from "sigma";
 import { readFileSync } from "fs";
 
-const raw = readFileSync("employees.cqs", "utf8");
+const database = Instance.temp();
 
-const db = Database.open();     // using a temporary database
-const ng = Engine.create();     // using the default query evaluation engine
-const cp = Program.parse(raw);  // using the default parser for conjunctive programs
+const engine = Engine.create({
+    onResult: result => {
+        if (result.type === ResultType.RELATION) {
+            console.table([...result.relation.tuples()]);
+        } else if (result.success) {
+            console.log("SUCCESS");
+        } else {
+            console.log(`ERROR: ${result.message}`);
+        }
+    }
+});
 
-// execute the program "cp" on database "db" and output tuples of relation "Order"
-const result = ng.evaluate(cp, db, "Order");
-if (result.type === ResultType.RELATION) {
-    console.table([...result.relation.tuples()]);
-}
+const parser = Parser.create({
+    onStatement: statement => {
+        engine.evaluate(statement, database)
+    }
+});
 
-db.close();     // free up used memory
+parser.read(readFileSync("employees.cqs", "utf8"));
+
+database.close();
 ```
 
 ## Limitations
