@@ -1,3 +1,4 @@
+import { Transform } from "stream";
 import * as Database from "../database";
 import * as Query from "../query";
 import { SkipList } from "../util/list";
@@ -7,7 +8,7 @@ import { VariableSet } from "./variable-set";
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
 export const enum ResultType { RELATION, SUCCESS }
 
-type SuccessResult = { type: ResultType.SUCCESS, success: true } | { type: ResultType.SUCCESS, success: false, message: string };
+type SuccessResult = { type: ResultType.SUCCESS } & ({ success: true } | { success: false, message: string });
 type RelationResult = { type: ResultType.RELATION, relation: Database.Relation };
 
 const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS, success: true });
@@ -18,10 +19,10 @@ export type Result = RelationResult | SuccessResult;
 
 export interface EngineOpts {
     type: EngineType;
-    onResult: (result: Result) => void;
+    database: Database.Instance;
 }
 
-export abstract class Engine {
+export abstract class Engine extends Transform {
     /**
      * Create a new instance of a query evaluation engine.
      * @param type The type of engine to instantiate. Defaults to `GEOMETRIC`.
@@ -29,8 +30,9 @@ export abstract class Engine {
     public static create(opts: Partial<EngineOpts> = { type: EngineType.GEOMETRIC }): Engine {
         switch (opts.type) {
             case EngineType.ALGEBRAIC: return null;
-            case EngineType.GEOMETRIC: return new GeometricEngine(opts.onResult || (statement => void 0));
-            default: throw new Error("Unsupported engine type");
+            case EngineType.GEOMETRIC:
+            default:
+                return new GeometricEngine(opts.database);
         }
     }
 
@@ -55,23 +57,32 @@ export abstract class Engine {
         Database.Attribute.create("Width", Database.DataType.INT),
     ];
 
-    protected constructor(private resultHandler: (result: Result) => void) { }
+    protected constructor(private database?: Database.Instance) {
+        super({
+            readableObjectMode: true,
+            writableObjectMode: true,
+        });
+    }
+
+    public _transform(statement: Query.Statement, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
+        done(null, this.evaluate(statement, this.database));
+    }
 
     /**
      * Given a statement and a database, evaluates the statement on the database.
      * @param input The statement to evaluate
-     * @param db The database to evaluate the statement on
+     * @param database The database to evaluate the statement on
      */
-    public evaluate(statement: Query.Statement, db: Database.Instance): void {
-        const result = this.evaluateStatement(statement, db);
+    public evaluate(statement: Query.Statement, database: Database.Instance): Result {
+        const result = this.evaluateStatement(statement, database);
         if (result.type === ResultType.RELATION) {
             try {
-                db.addRelation(result.relation);
+                database.addRelation(result.relation);
             } catch (e) {
-                this.resultHandler(ERROR(e.message));
+                return ERROR(e.message);
             }
         }
-        this.resultHandler(result);
+        return result;
     }
 
     private evaluateStatement(statement: Query.Statement, db: Database.Instance): Result {

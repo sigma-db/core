@@ -1,12 +1,8 @@
 .vscode/
-assets/
 bin/
-build/
 lib/
 node_modules/
-resources/
 
-.eslintrc.json
 .gitattributes
 .gitignore
 .npmignore

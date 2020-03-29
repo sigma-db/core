@@ -1,26 +1,34 @@
-import { IAttributeLike, DataType } from "../database";
+import { Transform } from "stream";
+import { IAttributeLike, DataType, Schema } from "../database";
 import * as stmt from "./statement";
 
 export interface ParserOpts {
-    onStatement: (statement: stmt.Statement) => void;
+    schema: Schema
 }
 
-export class Parser {
+export class Parser extends Transform {
+    private static readonly WHITESPACE: RegExp = /[ \t\r\n]/;
     private readonly ERROR: never;
     private pos: number = 0;
     private input: string = "";
 
-    public static create(opts: ParserOpts): Parser {
-        return new Parser(opts.onStatement);
+    public static create(opts?: Partial<ParserOpts>): Parser {
+        return new Parser();
     }
 
-    public read(data: string): void {
-        this.pos = this.input.length - this.pos;
-        this.input = this.input.substring(this.input.length - this.pos) + data;
+    public _transform(input: Buffer, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
+        this.input = this.input.substring(this.pos) + input.toString("utf8");
+        this.pos = 0;
         this.parse();
+        done();
     }
 
-    private constructor(private readonly handler: (statement: stmt.Statement) => void) { }
+    protected constructor(private database?: Schema) {
+        super({
+            readableObjectMode: true,
+            writableObjectMode: false,
+        });
+    }
 
     private parse(): void {
         while (this.pos < this.input.length) {
@@ -30,10 +38,10 @@ export class Parser {
                 const stmt = this.parseStatement();
                 if (stmt !== this.ERROR && (this.parseWhitespace(), this.input.charCodeAt(this.pos) === 0x2E)) {
                     this.pos++;
-                    this.handler(stmt);
+                    this.push(stmt);
                 } else {
                     this.pos = pos;
-                    return this.ERROR;
+                    return;
                 }
             }
             this.parseWhitespace();
@@ -312,10 +320,6 @@ export class Parser {
         }
     }
 
-    /**
-     * Parses an expression of the form `(\s*[1-9][0-9]*\s*)`, e.g. `(64)` or `( 64 )`
-     * @param defaultWidth The default value to return if the regex does not match
-     */
     private parseWidthExpression(defaultWidth: number): number {
         const pos = this.pos;
         this.parseWhitespace();
@@ -344,11 +348,8 @@ export class Parser {
         return isMatch;
     }
 
-    /**
-     * Greedily parses an arbitrary amount of whitespace characters.
-     */
     private parseWhitespace(): void {
-        while (/^[ \t\r\n]/.test(this.input.charAt(this.pos))) {
+        while (Parser.WHITESPACE.test(this.input.charAt(this.pos))) {
             this.pos++;
         }
     }

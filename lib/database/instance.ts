@@ -7,21 +7,22 @@ export interface Schema {
     [name: string]: Relation;
 }
 
+export interface InstanceOpts {
+    path: string;
+}
+
 export class Instance {
     /**
      * Opens an existing database instance stored at the specified location
      * or creates a new one if it does not yet exist.
      */
-    public static open(path: string): Instance {
-        const log = TransactionLog.open(path);
-        return new LoggedInstance(log);
-    }
-
-    /**
-     * Creates a temporary database instance with no logging to disk.
-     */
-    public static temp(): Instance {
-        return new Instance();
+    public static create(opts?: Partial<InstanceOpts>): Instance {
+        if (!!opts && !!opts.path) {
+            const log = TransactionLog.open(opts.path);
+            return new LoggedInstance(log);
+        } else {
+            return new Instance();
+        }
     }
 
     protected readonly relations: Schema = {};
