@@ -2,12 +2,12 @@
 import { pipeline } from "stream";
 import { Engine, Instance, Parser } from "../lib";
 import { version } from "../package.json";
-import { Formatter } from "./formatter";
+import { Logger } from "./logger";
 
 const database = Instance.create({ path: process.argv[2] });
-const parser = Parser.create();
-const engine = Engine.create({ database });
-const formatter = Formatter.create();
+const parser = Parser.create({ schema: database.schema });
+const engine = Engine.create({ instance: database });
+const logger = Logger.create();
 
 console.log(`sigmaDB ${version}`);
 if (!database.isLogged) {
@@ -20,11 +20,7 @@ pipeline(
     process.stdin,
     parser,
     engine,
-    formatter,
+    logger,
     process.stdout,
-    error => {
-        if (!!error) {
-            console.error(error.message);
-        }
-    }
+    error => !!error && console.error(error.message),
 );

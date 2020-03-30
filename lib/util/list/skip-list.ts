@@ -39,7 +39,7 @@ export class SkipList<T extends IComparable<T>> implements List<T, true> {
         }
     }
 
-    constructor(private readonly depth = 4, private readonly p = 1 / depth, private readonly throwsOnDuplicate = false) {
+    public constructor(private readonly depth = 4, private readonly p = 1 / depth, private readonly throwsOnDuplicate = false) {
         this.head = new Node<T>(null, depth);
         this.tail = new Node<T>(null, 0);
         this.level = 0;

@@ -55,27 +55,27 @@ Employee: (
     name:     string(32),
     salary:   int,
     division: int
-).
+)
 Division: (
     id:   int,
     name: string(64),
     head: int
-).
+)
 
 % insert into tables
-Division(0, "Research and Development", 1).
-Division(1, "Marketing", 0).
-Employee(0, "Jack Walls", 8360, 1).
-Employee(1, "Nicole Smith", 7120, 0).
-Employee(2, "Joan Waters", 2700, 0).
-Employee(3, "David Brown", 4200, 1).
-Employee(4, "Marc Wilson", 4200, 1).
+Division(0, "Research and Development", 1)
+Division(1, "Marketing", 0)
+Employee(0, "Jack Walls", 8360, 1)
+Employee(1, "Nicole Smith", 7120, 0)
+Employee(2, "Joan Waters", 2700, 0)
+Employee(3, "David Brown", 4200, 1)
+Employee(4, "Marc Wilson", 4200, 1)
 
 % ask a query
 Order(master=x, servant=y) <-
     Employee(name=x, division=z, id=u),
     Employee(name=y, division=z),
-    Division(id=z, head=u).
+    Division(id=z, head=u)
 ```
 
 Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:

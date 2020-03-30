@@ -1,25 +1,26 @@
 import { Transform } from "stream";
 import * as Database from "../database";
 import * as Query from "../query";
-import { SkipList } from "../util/list";
 import { IResolvedAtom, TetrisJoin } from "./tetris-join";
+import { Project } from "./project";
 import { VariableSet } from "./variable-set";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
-export const enum ResultType { RELATION, SUCCESS }
+export const enum ResultType { RELATION, SUCCESS, ERROR }
 
-type SuccessResult = { type: ResultType.SUCCESS } & ({ success: true } | { success: false, message: string });
 type RelationResult = { type: ResultType.RELATION, relation: Database.Relation };
+type SuccessResult = { type: ResultType.SUCCESS };
+type ErrorResult = { type: ResultType.ERROR, message: string };
 
-const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS, success: true });
-const ERROR = (message: string): SuccessResult => ({ type: ResultType.SUCCESS, success: false, message });
 const RELATION = (relation: Database.Relation): RelationResult => ({ type: ResultType.RELATION, relation });
+const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS });
+const ERROR = (message: string): ErrorResult => ({ type: ResultType.ERROR, message });
 
-export type Result = RelationResult | SuccessResult;
+export type Result = RelationResult | SuccessResult | ErrorResult;
 
 export interface EngineOpts {
     type: EngineType;
-    database: Database.Instance;
+    instance: Database.Instance;
 }
 
 export abstract class Engine extends Transform {
@@ -32,7 +33,7 @@ export abstract class Engine extends Transform {
             case EngineType.ALGEBRAIC: return null;
             case EngineType.GEOMETRIC:
             default:
-                return new GeometricEngine(opts.database);
+                return new GeometricEngine(opts.instance);
         }
     }
 
@@ -98,15 +99,6 @@ export abstract class Engine extends Transform {
 
     protected abstract onSelect(statement: Query.SelectStatement, db: Database.Instance): Result;
 
-    protected project(tuples: SkipList<Database.Tuple>, map: number[]): SkipList<Database.Tuple> {
-        const result = new SkipList<Database.Tuple>();
-        for (const tuple of tuples) {
-            const _tuple = Database.Tuple.from(map.map(p => tuple[p]));
-            result.insert(_tuple);
-        }
-        return result;
-    }
-
     protected resolve(cqatoms: Query.Atom[], schema: Database.Schema): [VariableSet, IResolvedAtom[]] {
         const valset = new VariableSet();
         const atoms = cqatoms.map(({ rel, tuple }) => {
@@ -141,7 +133,7 @@ export abstract class Engine extends Transform {
         return [valset, atoms];
     }
 
-    private onCreate(statement: Query.CreateStatement, db: Database.Instance): SuccessResult {
+    private onCreate(statement: Query.CreateStatement, db: Database.Instance): SuccessResult | ErrorResult {
         try {
             db.createRelation(statement.rel, statement.attrs.map(spec => Database.Attribute.from(spec)));
             return SUCCESS();
@@ -150,7 +142,7 @@ export abstract class Engine extends Transform {
         }
     }
 
-    private onInsert(statement: Query.InsertStatement, db: Database.Instance): SuccessResult {
+    private onInsert(statement: Query.InsertStatement, db: Database.Instance): SuccessResult | ErrorResult {
         let raw: Query.Literal[];
         if (statement.tuple.type === Query.TupleType.UNNAMED) {
             raw = statement.tuple.values.map(v => v.value);
@@ -210,7 +202,7 @@ export class GeometricEngine extends Engine {
         const prjSchema = queryAttrs.map(({ value }) => vars.get(value.name).id);
 
         const joined = TetrisJoin.execute(atoms, vars);
-        const projected = super.project(joined, prjSchema);
+        const projected = Project.execute(joined, prjSchema);
         const result = Database.Relation.create(statement.name, schema, { tuples: projected });
 
         return RELATION(result.static());
