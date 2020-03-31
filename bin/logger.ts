@@ -4,37 +4,38 @@ import { Result, ResultType } from "../lib";
 
 export interface LoggerOpts {
     rowLimit: number;
-    logRelation: boolean;
-    logSuccess: boolean;
-    logError: boolean;
+    isActive: boolean;
 }
 
-export class Logger extends Transform {
+export abstract class Logger extends Transform {
     private static defaultOpts: LoggerOpts = {
         rowLimit: 10,
-        logRelation: true,
-        logSuccess: true,
-        logError: true
+        isActive: true,
     };
 
-    public static create(opts: Partial<LoggerOpts> = Logger.defaultOpts) {
-        return new Logger({ ...Logger.defaultOpts, ...opts });
+    public static create(opts: Partial<LoggerOpts> = Logger.defaultOpts): Logger {
+        const { rowLimit, isActive } = { ...Logger.defaultOpts, ...opts };
+        if (isActive) {
+            return new ActiveLogger(rowLimit);
+        } else {
+            return new SilentLogger();
+        }
     }
 
-    private rowLimit: number;
-    private logRelation: boolean;
-    private logSuccess: boolean;
-    private logError: boolean;
-
-    private constructor({ rowLimit, logRelation, logSuccess, logError }: LoggerOpts) {
+    public constructor() {
         super({
             readableObjectMode: false,
             writableObjectMode: true,
         });
-        this.rowLimit = rowLimit;
-        this.logRelation = logRelation;
-        this.logSuccess = logSuccess;
-        this.logError = logError;
+    }
+
+    public abstract _transform(result: Result, _encoding: string, done: (error?: Error | null, data?: any) => void): void;
+}
+
+class ActiveLogger extends Logger {
+    public constructor(private rowLimit: number) {
+        super();
+        this.push(`> `);
     }
 
     private limit(data: IterableIterator<object>, limit?: number): object[] {
@@ -53,30 +54,54 @@ export class Logger extends Transform {
     }
 
     private log(text: string): void {
-        this.push(text);
-        this.push(EOL);
+        this.push(`${text}${EOL}`);
+    }
+
+    private success(text: string): void {
+        this.push(`\x1b[32m${text}\x1b[0m${EOL}`);
+    }
+
+    private error(text: string): void {
+        this.push(`\x1b[31m${text}\x1b[0m${EOL}`);
+    }
+
+    private info(text: string): void {
+        this.push(`\x1b[36m${text}\x1b[0m${EOL}`);
+    }
+
+    private table(data: object[]): void {
+        console.table(data);
     }
 
     public _transform(result: Result, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
         switch (result.type) {
             case ResultType.RELATION:
-                if (this.logRelation) {
-                    const { name, size } = result.relation;
-                    const tuples = this.limit(result.relation.tuples(), this.rowLimit);
-                    this.log(`${name || "<Anonymous>"} (${size} tuple${size != 1 && "s"}):`);
-                    this.log(JSON.stringify(tuples));
-                    if (this.rowLimit < size) {
-                        this.log(`(${size - this.rowLimit} entries omitted)`);
-                    }
+                const { name, size } = result.relation;
+                const tuples = this.limit(result.relation.tuples(), this.rowLimit);
+                this.info(`${name || "<Anonymous>"} (${size} tuple${size != 1 && "s"}):`);
+                this.table(tuples);
+                if (this.rowLimit < size) {
+                    this.log(`(${size - this.rowLimit} entries omitted)`);
                 }
                 break;
             case ResultType.SUCCESS:
-                this.logSuccess && this.log(`Done.`);
+                this.success(`Done.`);
                 break;
             case ResultType.ERROR:
-                this.logError && this.log(`An error occurred: ${result.message}`);
+                this.error(result.message);
                 break;
         }
+        this.push(`> `);
+        done();
+    }
+}
+
+class SilentLogger extends Logger {
+    public constructor() {
+        super();
+    }
+
+    public _transform(_result: Result, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
         done();
     }
 }

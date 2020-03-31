@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { pipeline } from "stream";
 import { Engine, Instance, Parser } from "../lib";
 import { version } from "../package.json";
@@ -7,7 +6,7 @@ import { Logger } from "./logger";
 const database = Instance.create({ path: process.argv[2] });
 const parser = Parser.create({ schema: database.schema });
 const engine = Engine.create({ instance: database });
-const logger = Logger.create();
+const logger = Logger.create({ rowLimit: 10, isActive: process.stdin.isTTY });
 
 console.log(`sigmaDB ${version}`);
 if (!database.isLogged) {

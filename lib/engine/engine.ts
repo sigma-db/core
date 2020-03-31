@@ -174,8 +174,14 @@ export abstract class Engine extends Transform {
         } else {
             result = Database.Relation.create(`Relation Schema of "${statement.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             try {
-                db.getRelation(statement.rel).schema.forEach(attr => {
-                    const tuple = Database.Tuple.create([attr.name, attr.type, attr.width]);
+                db.getRelation(statement.rel).schema.forEach(({ name, type, width }) => {
+                    let typename =
+                        type === Database.DataType.INT ? "Integer" :
+                            type === Database.DataType.STRING ? "String" :
+                                type === Database.DataType.BOOL ? "Bool" :
+                                    type === Database.DataType.CHAR ? "Char" :
+                                        "<invalid>";
+                    const tuple = Database.Tuple.create([name, typename, width]);
                     result.insert(tuple);
                 });
             } catch (e) {

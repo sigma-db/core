@@ -309,7 +309,7 @@ export class Parser extends Transform {
         }
     }
 
-    private parseTypeName() {
+    private parseTypeName(): Omit<IAttributeLike, "name"> {
         if (this.parseString("integer") || this.parseString("int")) {
             return { type: DataType.INT, width: this.parseWidthExpression(4) };
         } else if (this.parseString("string") || this.parseString("varchar")) {

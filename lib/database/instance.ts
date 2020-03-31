@@ -87,7 +87,7 @@ export class Instance {
         if (name in this.relations) {
             return this.relations[name];
         } else {
-            throw new Error(`Relation ${name} does not exist in this database instance.`);
+            throw new Error(`Relation "${name}" does not exist.`);
         }
     }
 
