@@ -1,5 +1,5 @@
 import { EOL } from "os";
-import { Transform } from "stream";
+import { Transform, TransformCallback } from "stream";
 import { Result, ResultType } from "../lib";
 
 export interface LoggerOpts {
@@ -73,7 +73,7 @@ class ActiveLogger extends Logger {
         console.table(data);
     }
 
-    public _transform(result: Result, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
+    public _transform(result: Result, _encoding: string, done: TransformCallback): void {
         switch (result.type) {
             case ResultType.RELATION:
                 const { name, size } = result.relation;

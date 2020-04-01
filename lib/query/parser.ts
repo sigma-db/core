@@ -1,4 +1,4 @@
-import { Transform } from "stream";
+import { Transform, TransformCallback } from "stream";
 import { IAttributeLike, DataType, Schema } from "../database";
 import * as stmt from "./statement";
 
@@ -15,7 +15,7 @@ export class Parser extends Transform {
         return new Parser();
     }
 
-    public _transform(input: Buffer, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
+    public _transform(input: Buffer, _encoding: string, done: TransformCallback): void {
         this.input = Buffer.concat([this.input.slice(this.pos), input]);
         this.pos = 0;
         this.parse();
@@ -356,7 +356,7 @@ export class Parser extends Transform {
     }
 
     /**
-     * Matches /[ \t\r\n]/
+     * Matches [ \t\r\n]
      */
     private parseWhitespace(): void {
         let c = this.input[this.pos];

@@ -1,8 +1,7 @@
-import { SigmaError } from "../util";
 import { Attribute } from "./attribute";
 import { Tuple } from "./tuple";
 
-export class DuplicateTupleError extends SigmaError {
+export class DuplicateTupleError extends Error {
     constructor(private readonly _rel: string, private readonly _tuple: Tuple, private readonly _schema: Attribute[]) {
         super(`Relation "${_rel}" already contains a tuple ${_tuple.toString(_schema)}.`);
     }
@@ -16,7 +15,7 @@ export class DuplicateTupleError extends SigmaError {
     }
 }
 
-export class ValueOutOfLimitsError extends SigmaError {
+export class ValueOutOfLimitsError extends Error {
     constructor(_rel: string, _tuple: Tuple, _schema: Attribute[], _pos: number) {
         const value = _schema[_pos].valueOf(_tuple[_pos]);
         const tupleStr = _tuple.toString(_schema);
@@ -31,10 +30,10 @@ export class ValueOutOfLimitsError extends SigmaError {
     }
 }
 
-export class ArityMismatchError extends SigmaError {
+export class ArityMismatchError extends Error {
     constructor(_rel: string, _tuple: Tuple, _schema: Attribute[]) {
         super(`Relation ${_rel} has arity ${_schema.length}, but given tuple ${_tuple.toString(_schema)} has arity ${_tuple.length}.`);
     }
 }
 
-export class UnsupportedOperationError extends SigmaError { }
+export class UnsupportedOperationError extends Error { }

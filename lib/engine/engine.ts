@@ -1,4 +1,4 @@
-import { Transform } from "stream";
+import { Transform, TransformCallback } from "stream";
 import * as Database from "../database";
 import * as Query from "../query";
 import { IResolvedAtom, TetrisJoin } from "./tetris-join";
@@ -65,7 +65,7 @@ export abstract class Engine extends Transform {
         });
     }
 
-    public _transform(statement: Query.Statement, _encoding: string, done: (error?: Error | null, data?: any) => void): void {
+    public _transform(statement: Query.Statement, _encoding: string, done: TransformCallback): void {
         done(null, this.evaluate(statement, this.database));
     }
 
