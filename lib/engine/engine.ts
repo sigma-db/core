@@ -76,7 +76,7 @@ export abstract class Engine extends Transform {
      */
     public evaluate(statement: Query.Statement, database: Database.Instance): Result {
         const result = this.evaluateStatement(statement, database);
-        if (result.type === ResultType.RELATION) {
+        if (statement.type === Query.StatementType.SELECT && result.type === ResultType.RELATION) {
             try {
                 database.addRelation(result.relation);
             } catch (e) {

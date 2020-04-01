@@ -78,7 +78,8 @@ class ActiveLogger extends Logger {
             case ResultType.RELATION:
                 const { name, size } = result.relation;
                 const tuples = this.limit(result.relation.tuples(), this.rowLimit);
-                this.info(`${name || "<Anonymous>"} (${size} tuple${size != 1 && "s"}):`);
+                const sizename = size > 0 ? size > 1 ? `${size} tuples` : "1 tuple" : "empty";
+                this.info(`${name || "<Anonymous>"} (${sizename})${size > 0 ? ":" : ""}`);
                 this.table(tuples);
                 if (this.rowLimit < size) {
                     this.log(`(${size - this.rowLimit} entries omitted)`);
@@ -91,8 +92,7 @@ class ActiveLogger extends Logger {
                 this.error(result.message);
                 break;
         }
-        this.push(`> `);
-        done();
+        done(null, `> `);
     }
 }
 
