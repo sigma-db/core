@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { pipeline } from "stream";
 import { Engine, Instance, Parser } from "../lib";
 import { version } from "../package.json";
@@ -11,7 +12,8 @@ const logger = Logger.create({ rowLimit: 10, isActive: process.stdin.isTTY });
 console.log(`sigmaDB ${version}`);
 if (!database.isLogged) {
     console.warn("Working in a temporary database.");
-    console.warn("Any data generated during this session will be lost upon closing the client!\n");
+    console.warn("Any data generated during this session will be lost upon closing the client!");
+    console.warn();
     console.warn("Run the client with 'sigma --database=\"</path/to/database>\"' to make changes persistent.");
 }
 
