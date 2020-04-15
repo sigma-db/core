@@ -1,5 +1,5 @@
 ﻿import { Dyadic } from "../util";
-import { DuplicateKeyError, SkipList, ArrayList, List } from "../util/list";
+import { DuplicateKeyError, SkipList, ArrayList, List } from "../util";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
 import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError, ArityMismatchError } from "./errors";
