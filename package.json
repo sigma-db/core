@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^13.9.5",
+    "@types/yargs": "^15.0.4",
     "typescript": "^3.8.3"
   },
   "scripts": {
@@ -33,5 +34,8 @@
     "sigma": "./dist/bin/main.js"
   },
   "main": "./dist/lib/index.js",
-  "types": "./types/lib/index.d.ts"
+  "types": "./types/lib/index.d.ts",
+  "dependencies": {
+    "yargs": "^15.3.1"
+  }
 }
