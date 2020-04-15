@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createServer, createConnection, Socket } from "net";
+import { createServer } from "net";
 import { pipeline } from "stream";
 import * as yargs from "yargs";
 import { Engine, Instance, Parser } from "../lib";
@@ -11,26 +11,19 @@ const { path } = yargs
     .argv;
 
 const database = Instance.create({ path });
-const parser = Parser.create({ schema: database.schema });
-const engine = Engine.create({ instance: database });
 
-createServer().listen("\\\\?\\pipe\\sigmaDB").on("connection", () => console.log("listening"));
-const input = new Socket({ readable: true, writable: true })
-    .connect("\\\\?\\pipe\\sigmaDB", () => console.log("connecting"))
-    .on("connect", () => {
-        console.log("connected");
-        input.write("Hi");
-        input.end();
-    })
-    .on("data", data => console.log(data.toString()));
+createServer().listen("/var/run/sigmaDB").on("connection", socket => {
+    const parser = Parser.create({ schema: database.schema });
+    const engine = Engine.create({ instance: database });
 
-pipeline(
-    input,
-    parser,
-    engine,
-    process.stdout,
-    err => err && console.error(err.message),
-);
+    pipeline(
+        socket,
+        parser,
+        engine,
+        socket,
+        err => err && console.error(err.message),
+    );
+});
 
 //     private limit(data: IterableIterator < object >, limit ?: number): object[] {
 //     if (typeof limit === "number") {
