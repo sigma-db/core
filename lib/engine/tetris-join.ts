@@ -1,5 +1,5 @@
 import { Attribute, Box, Relation, Tuple } from "../database";
-import { SkipList } from "../util/list";
+import { SkipList } from "../util";
 import { TypedVariable } from "./typed-variable";
 import { VariableSet } from "./variable-set";
 import { CDS } from "./cds";

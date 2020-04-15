@@ -1,27 +1,26 @@
 #!/usr/bin/env node
+import { createServer } from "net";
 import { pipeline } from "stream";
+import * as yargs from "yargs";
 import { Engine, Instance, Parser } from "../lib";
-import { version } from "../package.json";
-import { Logger } from "./logger";
 
-const database = Instance.create({ path: process.argv[2] });
-const parser = Parser.create({ schema: database.schema });
-const engine = Engine.create({ instance: database });
-const logger = Logger.create({ rowLimit: 10, isActive: process.stdin.isTTY });
+const { path } = yargs
+    .option("path", { alias: "p", description: "Load a specific database instance", type: "string" })
+    .scriptName("sigma")
+    .help()
+    .argv;
 
-console.log(`sigmaDB ${version}`);
-if (!database.isLogged) {
-    console.warn("Working in a temporary database.");
-    console.warn("Any data generated during this session will be lost upon closing the client!");
-    console.warn();
-    console.warn("Run the client with 'sigma --database=\"</path/to/database>\"' to make changes persistent.");
-}
+const database = Instance.create({ path });
 
-pipeline(
-    process.stdin,
-    parser,
-    engine,
-    logger,
-    process.stdout,
-    error => !!error && console.error(error.message),
-);
+createServer().listen("/var/run/sigmaDB").on("connection", socket => {
+    const parser = Parser.create({ schema: database.schema });
+    const engine = Engine.create({ instance: database });
+
+    pipeline(
+        socket,
+        parser,
+        engine,
+        socket,
+        err => err && socket.write(err.message),
+    );
+});

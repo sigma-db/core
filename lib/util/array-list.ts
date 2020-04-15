@@ -13,12 +13,7 @@ export class ArrayList<T extends IComparable<T>> implements List<T, false> {
     }
 
     public find(key: T): T {
-        for (const c of this.data) {
-            if (c.compareTo(key) === 0) {
-                return c;
-            }
-        }
-        return null;
+        return this.data.find(v => v.compareTo(key) === 0);
     }
 
     public insert(key: T): void {
