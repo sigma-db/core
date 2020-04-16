@@ -81,33 +81,25 @@ Order(master=x, servant=y) <-
 Assuming the script is stored in a file named `employees.cqs`, we can evaluate it using *sigmaDB* as follows:
 
 ```TypeScript
-import { Instance, Engine, Program, ResultType } from "sigma";
-import { readFileSync } from "fs";
+import { pipeline } from "stream";
+import { Engine, Instance, Parser } from "sigma";
 
-const database = Instance.temp();
+const database = Instance.create();
+const parser = Parser.create({ schema: database.schema });
+const engine = Engine.create({ instance: database });
 
-const engine = Engine.create({
-    onResult: result => {
-        if (result.type === ResultType.RELATION) {
-            console.table([...result.relation.tuples()]);
-        } else if (result.success) {
-            console.log("SUCCESS");
-        } else {
-            console.log(`ERROR: ${result.message}`);
-        }
-    }
-});
-
-const parser = Parser.create({
-    onStatement: statement => {
-        engine.evaluate(statement, database)
-    }
-});
-
-parser.read(readFileSync("employees.cqs", "utf8"));
+pipeline(
+    process.stdin,
+    parser,
+    engine,
+    process.stdout,
+    err => err && socket.write(err.message),
+);
 
 database.close();
 ```
+
+Now, run `cat employees.cqs > test.js` assuming `test.js` to be the result of the compiled TypeScript script above.
 
 ## Limitations
 

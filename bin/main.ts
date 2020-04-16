@@ -4,15 +4,16 @@ import { pipeline } from "stream";
 import * as yargs from "yargs";
 import { Engine, Instance, Parser } from "../lib";
 
-const { path } = yargs
+const { path, socket } = yargs
     .option("path", { alias: "p", description: "Load a specific database instance", type: "string" })
+    .option("socket", { alias: "s", description: "The UNIX domain socket to communicate on", type: "string", default: "sigmaDB.sock" })
     .scriptName("sigma")
     .help()
     .argv;
 
 const database = Instance.create({ path });
 
-createServer().listen("/var/run/sigmaDB").on("connection", socket => {
+createServer().listen(socket).on("connection", socket => {
     const parser = Parser.create({ schema: database.schema });
     const engine = Engine.create({ instance: database });
 
