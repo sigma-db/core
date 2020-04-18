@@ -12,16 +12,19 @@ const { path, socket } = yargs
     .argv;
 
 const database = Instance.create({ path });
+const server = createServer().listen(socket)
+    .on("connection", socket => {
+        const parser = Parser.create({ schema: database.schema });
+        const engine = Engine.create({ instance: database });
 
-createServer().listen(socket).on("connection", socket => {
-    const parser = Parser.create({ schema: database.schema });
-    const engine = Engine.create({ instance: database });
-
-    pipeline(
-        socket,
-        parser,
-        engine,
-        socket,
-        err => err && socket.write(err.message),
-    );
-});
+        pipeline(
+            socket,
+            parser,
+            engine,
+            socket,
+            err => err && socket.write(err.message),
+        );
+    })
+    .on("close", () => {
+        database.close();
+    });
