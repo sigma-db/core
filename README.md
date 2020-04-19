@@ -99,7 +99,7 @@ pipeline(
 database.close();
 ```
 
-Now, run `cat employees.cqs > test.js` assuming `test.js` to be the result of the compiled TypeScript script above.
+Now, run the above server and feed in some input by running `cat employees.cqs | node test.js` assuming `test.js` to be the result of the compiled TypeScript script above.
 
 ## Limitations
 
