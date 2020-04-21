@@ -20,7 +20,7 @@ In order to run sigmaDB, you need [Node.js](https://nodejs.org) 11.0 or newer to
 
 ### Installation
 
-To install the package from [npm](https://www.npmjs.com/), run `npm install -g sigma-db`.
+To install the package from [npm](https://www.npmjs.com/), run `npm install -g @sigma-db/core`.
 Thereafter, you can run sigmaDB from the command line with `sigma --database=</path/to/database>`.
 
 ### Custom Build
