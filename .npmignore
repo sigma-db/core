@@ -1,6 +1,5 @@
 .vscode/
-bin/
-lib/
+src/
 node_modules/
 
 .gitattributes

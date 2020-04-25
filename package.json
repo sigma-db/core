@@ -23,19 +23,12 @@
   },
   "devDependencies": {
     "@types/node": "^13.13.0",
-    "@types/yargs": "^15.0.4",
     "typescript": "^3.8.3"
   },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build"
   },
-  "bin": {
-    "sigma": "./dist/bin/main.js"
-  },
-  "main": "./dist/lib/index.js",
-  "types": "./types/lib/index.d.ts",
-  "dependencies": {
-    "yargs": "^15.3.1"
-  }
+  "main": "./dist/index.js",
+  "types": "./types/index.d.ts"
 }
