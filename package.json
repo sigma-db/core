@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://dev.azure.com/dlw/sigmaDB/_git/sigmaDB"
+    "url": "https://dev.azure.com/dlw/sigmaDB/_git/core"
   },
   "license": "MIT",
   "engines": {
