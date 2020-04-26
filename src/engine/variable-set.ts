@@ -6,7 +6,7 @@ export class VariableSet {
     private readonly vars: { [name: string]: TypedVariable } = {};
 
     public variable(type: DataType, width: number, name: string = `@${this.count}`): TypedVariable {
-        this.vars[name] = this.vars[name] || TypedVariable.create(this.count++, type, width);
+        this.vars[name] = this.vars[name] ?? TypedVariable.create(this.count++, type, width);
         return this.vars[name];
     }
 

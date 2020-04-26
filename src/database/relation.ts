@@ -1,5 +1,4 @@
-﻿import { Dyadic } from "../util";
-import { DuplicateKeyError, SkipList, ArrayList, List } from "../util";
+﻿import { Dyadic, DuplicateKeyError, SkipList, ArrayList, List } from "../util";
 import { Attribute } from "./attribute";
 import { Box } from "./box";
 import { ValueOutOfLimitsError, DuplicateTupleError, UnsupportedOperationError, ArityMismatchError } from "./errors";
@@ -34,7 +33,7 @@ export abstract class Relation implements Iterable<Tuple> {
     private static readonly defaultOptions: Partial<Options> = {
         throwsOnDuplicate: true,
         sorted: true,
-    } as const;
+    };
 
     private static anonymousCnt = 1;
 
@@ -46,9 +45,9 @@ export abstract class Relation implements Iterable<Tuple> {
      */
     public static create(name: string, schema: Attribute[], options = Relation.defaultOptions): Relation {
         const { throwsOnDuplicate, log, sorted, tuples } = { ...Relation.defaultOptions, ...options };
-        const _tuples = tuples || (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
+        const _tuples = tuples ?? (sorted ? new SkipList<Tuple>(4, 0.25, throwsOnDuplicate) : new ArrayList<Tuple>());
 
-        let inst = new _Relation(name, schema, _tuples, Relation.hash(name || `@${Relation.anonymousCnt++}`));
+        let inst = new _Relation(name, schema, _tuples, Relation.hash(name ?? `@${Relation.anonymousCnt++}`));
         if (!!log) {
             inst = inst.log(log);
         }

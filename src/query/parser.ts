@@ -59,10 +59,10 @@ export class Parser extends Transform {
 
     private parseStatement(): stmt.Statement {
         return this.parseInsertStatement()
-            || this.parseCreateStatement()
-            || this.parseSelectStatement()
-            || this.parseInfoStatement()
-            || this.parseDumpStatement();
+            ?? this.parseCreateStatement()
+            ?? this.parseSelectStatement()
+            ?? this.parseInfoStatement()
+            ?? this.parseDumpStatement();
     }
 
     private parseInsertStatement(): stmt.InsertStatement {

@@ -9,9 +9,9 @@ export interface IAttributeLike {
 export abstract class Attribute implements IAttributeLike {
     public static create(name: string, type: DataType, width?: number): Attribute {
         switch (type) {
-            case DataType.INT: return new IntAttribute(name, width || 4);
+            case DataType.INT: return new IntAttribute(name, width ?? 4);
             case DataType.CHAR: return new CharAttribute(name);
-            case DataType.STRING: return new StringAttribute(name, width || 32);
+            case DataType.STRING: return new StringAttribute(name, width ?? 32);
             case DataType.BOOL: return new BoolAttribute(name);
             default: throw new Error("Unsupported data type!");
         }

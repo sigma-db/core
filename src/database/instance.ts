@@ -17,7 +17,7 @@ export class Instance {
      * or creates a new one if it does not yet exist.
      */
     public static create(opts?: Partial<InstanceOpts>): Instance {
-        if (!!opts && !!opts.path) {
+        if (!!opts?.path) {
             const log = TransactionLog.open(opts.path);
             return new LoggedInstance(log);
         } else {

@@ -35,7 +35,7 @@ export class DyadicTrie<T> {
             node = node.children[child];
         }
 
-        node.value = node.value || value;
+        node.value = node.value ?? value;
 
         return node.value;
     }
