@@ -16,7 +16,7 @@ Still, please keep in mind that this is a *research project* and as such lacks m
 
 ### Prerequisites
 
-In order to run sigmaDB, you need [Node.js](https://nodejs.org) 11.0 or newer to be present on your system.
+In order to run sigmaDB, you need [Node.js](https://nodejs.org) 14 or newer to be present on your system.
 
 ### Installation
 
@@ -42,7 +42,7 @@ We discern four types of queries, whose syntax we outline by example:
 3. To **select** all employees' IDs whose salary is 4,200, write either `(name=x) <- Employee(name=x, salary=4200)` or `(name=y) <- Employee(x, y, 4200, z)`. Again, the order the attributes appear in only matters for the second form. In addition, attributes that are not required to formulate the query may be omitted in the named syntax, while they have to be explicitly mentioned in the unnamed syntax.
 4. To print the **schema** of the database or a specific relation, write `?` or `<rel>?`, respectively, where `<rel>` is the name of the relation to get the schema of.
 
-In addition, we allow `<rel>!` as a shortcut for a **select**-query that simply queries all of `<rel>`'s tuples.
+In addition, we allow `<rel>!` as a shortcut for a **select**-query that simply yields `<rel>` itself.
 
 ## Usage as a Library
 
@@ -82,7 +82,7 @@ Assuming the script is stored in a file named `employees.cqs`, we can evaluate i
 
 ```TypeScript
 import { pipeline } from "stream";
-import { Engine, Instance, Parser } from "sigma";
+import { Engine, Instance, Parser } from "@sigma-db/core";
 
 const database = Instance.create();
 const parser = Parser.create({ schema: database.schema });

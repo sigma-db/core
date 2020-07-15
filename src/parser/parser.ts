@@ -1,50 +1,41 @@
-import { Transform, TransformCallback } from "stream";
 import { IAttributeLike, DataType, Schema } from "../database";
 import * as stmt from "./statement";
 
 export interface ParserOpts {
-    schema: Schema
+    schema: Schema;
 }
 
-export class Parser extends Transform {
+export class Parser {
     private readonly ERROR: never;
     private pos: number = 0;
     private input: Buffer = Buffer.alloc(0);
 
     public static create(opts?: Partial<ParserOpts>): Parser {
-        return new Parser();
+        return new Parser(opts?.schema);
     }
 
-    public _transform(input: Buffer, _encoding: string, done: TransformCallback): void {
-        this.input = Buffer.concat([this.input.slice(this.pos), input]);
+    protected constructor(private schema?: Schema) { }
+
+    public parse(input: string): stmt.Statement | void {
+        this.input = Buffer.concat([
+            this.input.slice(this.pos),     // remainder from previous input
+            Buffer.from(input, "ascii"),    // new input
+        ]);
         this.pos = 0;
-        this.parse();
-        done();
-    }
-
-    protected constructor(private schema?: Schema) {
-        super({
-            readableObjectMode: true,
-            writableObjectMode: false,
-            decodeStrings: true,
-        });
-    }
-
-    private parse(): void {
         while (this.pos < this.input.length) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.parseComment() === this.ERROR) {
                 const pos = this.pos;
                 const stmt = this.parseStatement();
                 if (stmt !== this.ERROR) {
                     this.pos++;
-                    this.push(stmt);
+                    return stmt;
                 } else {
                     this.pos = pos;
                     return;
                 }
             }
-            this.parseWhitespace();
+            this.skipWhitespace();
         }
     }
 
@@ -69,7 +60,7 @@ export class Parser extends Transform {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             const tuple = this.parseValueTuple((): stmt.LiteralValue => {
                 const value = this.parseLiteral();
                 if (value !== this.ERROR) {
@@ -89,18 +80,18 @@ export class Parser extends Transform {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.input[this.pos] === 0x3A) {
                 this.pos++;
-                this.parseWhitespace();
+                this.skipWhitespace();
                 const attrs = this.parseTuple((): IAttributeLike => {
                     const pos = this.pos;
                     const name = this.parseIdentifier();
                     if (name !== this.ERROR) {
-                        this.parseWhitespace();
+                        this.skipWhitespace();
                         if (this.input[this.pos] === 0x3A) {
                             this.pos++;
-                            this.parseWhitespace();
+                            this.skipWhitespace();
                             const value = this.parseTypeName();
                             if (value !== this.ERROR) {
                                 return { name, ...value };
@@ -123,7 +114,7 @@ export class Parser extends Transform {
         const pos = this.pos;
         const name = this.parseIdentifier();
         if (name !== this.ERROR) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             const exports = this.parseTuple((): { attr: string, value: stmt.VariableValue } => {
                 const value = this.parseNamedValue(() => this.parseIdentifier());
                 if (value !== this.ERROR) {
@@ -132,13 +123,13 @@ export class Parser extends Transform {
                 return this.ERROR;
             });
             if (exports !== this.ERROR) {
-                this.parseWhitespace();
-                if (this.parseString("<-")) {
-                    this.parseWhitespace();
+                this.skipWhitespace();
+                if (this.match("<-")) {
+                    this.skipWhitespace();
                     const body = this.parseList(() => {
                         const rel = this.parseIdentifier();
                         if (rel !== this.ERROR) {
-                            this.parseWhitespace();
+                            this.skipWhitespace();
                             const tuple = this.parseValueTuple((): stmt.Value => {
                                 const literal = this.parseLiteral();
                                 if (literal !== this.ERROR) {
@@ -169,11 +160,11 @@ export class Parser extends Transform {
     private parseInfoStatement(): stmt.InfoStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
-        this.parseWhitespace();
+        this.skipWhitespace();
         if (this.input[this.pos] === 0x3F) {
             this.pos++;
             if (rel === this.ERROR) {
-                return { type: stmt.StatementType.INFO }
+                return { type: stmt.StatementType.INFO };
             } else {
                 return { type: stmt.StatementType.INFO, rel };
             }
@@ -186,7 +177,7 @@ export class Parser extends Transform {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.input[this.pos] === 0x21) {
                 this.pos++;
                 return { type: stmt.StatementType.DUMP, rel };
@@ -200,10 +191,10 @@ export class Parser extends Transform {
         const pos = this.pos;
         const attr = this.parseIdentifier();
         if (attr !== this.ERROR) {
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.input[this.pos] === 0x3D) {
                 this.pos++;
-                this.parseWhitespace();
+                this.skipWhitespace();
                 const value = valueParser();
                 if (value !== this.ERROR) {
                     return { attr, value };
@@ -232,9 +223,9 @@ export class Parser extends Transform {
         const pos = this.pos;
         if (this.input[this.pos] === 0x28) {
             this.pos++;
-            this.parseWhitespace();
+            this.skipWhitespace();
             const values = this.parseList((): T => valueParser());
-            if (values !== this.ERROR && this.parseWhitespace(), this.input[this.pos] === 0x29) {
+            if (values !== this.ERROR && this.skipWhitespace(), this.input[this.pos] === 0x29) {
                 this.pos++;
                 return values;
             }
@@ -251,10 +242,10 @@ export class Parser extends Transform {
         while (value !== this.ERROR) {
             values.push(value);
             pos = this.pos;
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.input[this.pos] === 0x2C) {
                 this.pos++;
-                this.parseWhitespace();
+                this.skipWhitespace();
                 value = valueParser();
             } else {
                 value = this.ERROR;
@@ -300,9 +291,9 @@ export class Parser extends Transform {
         } else if (this.input[this.pos] === 0x27 && this.input[this.pos + 2] === 0x27) {       // parse a char
             this.pos += 3;
             return BigInt(this.input[this.pos - 2]);
-        } else if (this.parseString("true")) {           // parse a boolean true
+        } else if (this.match("true")) {           // parse a boolean true
             return 1n;
-        } else if (this.parseString("false")) {          // parse a boolean false
+        } else if (this.match("false")) {          // parse a boolean false
             return 0n;
         } else {
             return this.ERROR;
@@ -310,31 +301,31 @@ export class Parser extends Transform {
     }
 
     private parseTypeName(): Omit<IAttributeLike, "name"> {
-        if (this.parseString("integer") || this.parseString("int")) {
-            return { type: DataType.INT, width: this.parseWidthExpression(4) };
-        } else if (this.parseString("string") || this.parseString("varchar")) {
-            return { type: DataType.STRING, width: this.parseWidthExpression(256) };
-        } else if (this.parseString("char")) {
+        if (this.match("integer") || this.match("int")) {
+            return { type: DataType.INT, width: this.parseWidthExpression() ?? 4 };
+        } else if (this.match("string") || this.match("varchar")) {
+            return { type: DataType.STRING, width: this.parseWidthExpression() ?? 256 };
+        } else if (this.match("char")) {
             return { type: DataType.CHAR, width: 1 };
-        } else if (this.parseString("boolean") || this.parseString("bool")) {
+        } else if (this.match("boolean") || this.match("bool")) {
             return { type: DataType.BOOL, width: 1 };
         } else {
             return this.ERROR;
         }
     }
 
-    private parseWidthExpression(defaultWidth: number): number {
+    private parseWidthExpression(): number {
         const pos = this.pos;
-        this.parseWhitespace();
+        this.skipWhitespace();
         if (this.input[this.pos] === 0x28) {
             this.pos++;
-            this.parseWhitespace();
+            this.skipWhitespace();
             if (this.input[this.pos] >= 49 && this.input[this.pos] <= 57) {
                 let num = this.input[this.pos++] - 48;
                 while (this.input[this.pos] >= 48 && this.input[this.pos] <= 57) {
                     num = num * 10 + this.input[this.pos++] - 48;
                 }
-                this.parseWhitespace();
+                this.skipWhitespace();
                 if (this.input[this.pos] === 0x29) {
                     this.pos++;
                     return num;
@@ -342,23 +333,25 @@ export class Parser extends Transform {
             }
         }
         this.pos = pos;
-        return defaultWidth;
-    }
-
-    private parseString(str: string): boolean {
-        for (let i = 0; i < str.length; i++) {
-            if (this.input[this.pos + i] != str.charCodeAt(i)) {
-                return false;
-            }
-        }
-        this.pos += str.length;
-        return true;
+        return null;
     }
 
     /**
-     * Matches [ \t\r\n]
+     * Matches `pattern` case-insensitively
      */
-    private parseWhitespace(): void {
+    private match(pattern: string): boolean {
+        const template = this.input.toString("ascii", this.pos, this.pos + pattern.length);
+        const isMatch = pattern.toLowerCase() === template.toLowerCase();
+        if (isMatch) {
+            this.pos += pattern.length;
+        }
+        return isMatch;
+    }
+
+    /**
+     * Matches `[ \t\r\n]*`
+     */
+    private skipWhitespace(): void {
         let c = this.input[this.pos];
         while (c == 0x09 || c == 0x0A || c == 0x0D || c == 0x20) {
             c = this.input[++this.pos];

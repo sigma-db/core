@@ -11,7 +11,8 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noImplicitAny": true,
-    "incremental": true
+    "incremental": true,
+    "useDefineForClassFields": true
   },
   "include": [
     "src/**/*"

@@ -1,6 +1,5 @@
-import { Transform, TransformCallback } from "stream";
 import * as Database from "../database";
-import * as Query from "../query";
+import * as Query from "../parser";
 import { IResolvedAtom, TetrisJoin } from "./tetris-join";
 import { Project } from "./project";
 import { VariableSet } from "./variable-set";
@@ -12,18 +11,17 @@ type RelationResult = { type: ResultType.RELATION, relation: Database.Relation }
 type SuccessResult = { type: ResultType.SUCCESS };
 type ErrorResult = { type: ResultType.ERROR, message: string };
 
+export type Result = RelationResult | SuccessResult | ErrorResult;
+
 const RELATION = (relation: Database.Relation): RelationResult => ({ type: ResultType.RELATION, relation });
 const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS });
 const ERROR = (message: string): ErrorResult => ({ type: ResultType.ERROR, message });
 
-export type Result = RelationResult | SuccessResult | ErrorResult;
-
 export interface EngineOpts {
     type: EngineType;
-    instance: Database.Instance;
 }
 
-export abstract class Engine extends Transform {
+export abstract class Engine {
     /**
      * Create a new instance of a query evaluation engine.
      * @param type The type of engine to instantiate. Defaults to `GEOMETRIC`.
@@ -33,7 +31,7 @@ export abstract class Engine extends Transform {
             case EngineType.ALGEBRAIC: return null;
             case EngineType.GEOMETRIC:
             default:
-                return new GeometricEngine(opts.instance);
+                return new GeometricEngine();
         }
     }
 
@@ -57,17 +55,6 @@ export abstract class Engine extends Transform {
         Database.Attribute.create("Data Type", Database.DataType.STRING, 8),
         Database.Attribute.create("Width", Database.DataType.INT),
     ];
-
-    protected constructor(private database?: Database.Instance) {
-        super({
-            readableObjectMode: true,
-            writableObjectMode: true,
-        });
-    }
-
-    public _transform(statement: Query.Statement, _encoding: string, done: TransformCallback): void {
-        done(null, this.evaluate(statement, this.database));
-    }
 
     /**
      * Given a statement and a database, evaluates the statement on the database.
