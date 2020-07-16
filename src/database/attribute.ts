@@ -1,12 +1,12 @@
 export const enum DataType { INT, STRING, CHAR, BOOL }
 
-export interface IAttributeLike {
+export interface AttributeLike {
     name: string;
     type: DataType;
     width: number;
 }
 
-export abstract class Attribute implements IAttributeLike {
+export abstract class Attribute implements AttributeLike {
     public static create(name: string, type: DataType, width?: number): Attribute {
         switch (type) {
             case DataType.INT: return new IntAttribute(name, width ?? 4);
@@ -17,7 +17,7 @@ export abstract class Attribute implements IAttributeLike {
         }
     }
 
-    public static from(attr: IAttributeLike): Attribute {
+    public static from(attr: AttributeLike): Attribute {
         switch (attr.type) {
             case DataType.INT: return Object.setPrototypeOf(attr, IntAttribute.prototype);
             case DataType.CHAR: return Object.setPrototypeOf(attr, CharAttribute.prototype);

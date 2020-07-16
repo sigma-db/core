@@ -1,4 +1,4 @@
-﻿import { Attribute, IAttributeLike } from "./attribute";
+﻿import { Attribute, AttributeLike } from "./attribute";
 import { Relation } from "./relation";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
@@ -111,7 +111,7 @@ export class Instance {
 
 interface ICreateTransaction {
     name: string;
-    attrs: IAttributeLike[];
+    attrs: AttributeLike[];
 }
 
 class LoggedInstance extends Instance {

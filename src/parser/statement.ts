@@ -1,4 +1,4 @@
-import { IAttributeLike } from "../database";
+import { AttributeLike } from "../database";
 
 export const enum StatementType { CREATE, INSERT, SELECT, INFO, DUMP }
 export const enum TupleType { NAMED, UNNAMED }
@@ -39,7 +39,7 @@ export interface Atom {
 export interface CreateStatement {
     type: StatementType.CREATE;
     rel: string;
-    attrs: IAttributeLike[];
+    attrs: AttributeLike[];
 }
 
 export interface InsertStatement {

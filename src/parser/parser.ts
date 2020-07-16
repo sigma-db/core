@@ -1,42 +1,43 @@
-import { IAttributeLike, DataType, Schema } from "../database";
+import { AttributeLike, DataType, Schema } from "../database";
 import * as stmt from "./statement";
 
 export interface ParserOpts {
     schema: Schema;
 }
 
+/**
+ * Parses our dialect of conjunctive queries.
+ * Note that we do not yet implement any error recovery and thus expect valid queries as input.
+ */
 export class Parser {
     private readonly ERROR: never;
-    private pos: number = 0;
-    private input: Buffer = Buffer.alloc(0);
+    private input: Buffer;
+    private pos: number;
 
-    public static create(opts?: Partial<ParserOpts>): Parser {
-        return new Parser(opts?.schema);
+    public static create(): Parser {
+        return new Parser();
     }
 
-    protected constructor(private schema?: Schema) { }
+    private constructor() { }
 
-    public parse(input: string): stmt.Statement | void {
-        this.input = Buffer.concat([
-            this.input.slice(this.pos),     // remainder from previous input
-            Buffer.from(input, "ascii"),    // new input
-        ]);
-        this.pos = 0;
+    public *parse(input: string): IterableIterator<stmt.Statement> {
+        this.reset(input);
         while (this.pos < this.input.length) {
             this.skipWhitespace();
             if (this.parseComment() === this.ERROR) {
-                const pos = this.pos;
                 const stmt = this.parseStatement();
                 if (stmt !== this.ERROR) {
-                    this.pos++;
-                    return stmt;
+                    yield stmt;
                 } else {
-                    this.pos = pos;
-                    return;
+                    break;
                 }
             }
-            this.skipWhitespace();
         }
+    }
+
+    private reset(input: string): void {
+        this.input = Buffer.from(input, "ascii");
+        this.pos = 0;
     }
 
     private parseComment(): void {
@@ -84,7 +85,7 @@ export class Parser {
             if (this.input[this.pos] === 0x3A) {
                 this.pos++;
                 this.skipWhitespace();
-                const attrs = this.parseTuple((): IAttributeLike => {
+                const attrs = this.parseTuple((): AttributeLike => {
                     const pos = this.pos;
                     const name = this.parseIdentifier();
                     if (name !== this.ERROR) {
@@ -300,7 +301,7 @@ export class Parser {
         }
     }
 
-    private parseTypeName(): Omit<IAttributeLike, "name"> {
+    private parseTypeName(): Omit<AttributeLike, "name"> {
         if (this.match("integer") || this.match("int")) {
             return { type: DataType.INT, width: this.parseWidthExpression() ?? 4 };
         } else if (this.match("string") || this.match("varchar")) {

@@ -56,6 +56,8 @@ export abstract class Engine {
         Database.Attribute.create("Width", Database.DataType.INT),
     ];
 
+    private constructor() { }
+
     /**
      * Given a statement and a database, evaluates the statement on the database.
      * @param input The statement to evaluate
