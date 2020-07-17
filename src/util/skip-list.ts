@@ -74,7 +74,7 @@ export class SkipList<T extends IComparable<T>> implements List<T, true> {
 
         node = node.next[0];
 
-        if (node === this.tail ?? node.key.compareTo(key) > 0) {
+        if (node === this.tail || node.key.compareTo(key) > 0) {
             const rlevel = this.randomLevel();
 
             if (rlevel > this.level) {

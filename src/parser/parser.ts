@@ -1,5 +1,5 @@
 import { AttributeLike, DataType, Schema } from "../database";
-import * as stmt from "./statement";
+import * as Statement from "./statement";
 
 export interface ParserOpts {
     schema: Schema;
@@ -20,7 +20,7 @@ export class Parser {
 
     private constructor() { }
 
-    public *parse(input: string): IterableIterator<stmt.Statement> {
+    public *parse(input: string): IterableIterator<Statement.Statement> {
         this.reset(input);
         while (this.pos < this.input.length) {
             this.skipWhitespace();
@@ -49,7 +49,7 @@ export class Parser {
         }
     }
 
-    private parseStatement(): stmt.Statement {
+    private parseStatement(): Statement.Statement {
         return this.parseInsertStatement()
             ?? this.parseCreateStatement()
             ?? this.parseSelectStatement()
@@ -57,27 +57,27 @@ export class Parser {
             ?? this.parseDumpStatement();
     }
 
-    private parseInsertStatement(): stmt.InsertStatement {
+    private parseInsertStatement(): Statement.InsertStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
             this.skipWhitespace();
-            const tuple = this.parseValueTuple((): stmt.LiteralValue => {
+            const tuple = this.parseValueTuple((): Statement.LiteralValue => {
                 const value = this.parseLiteral();
                 if (value !== this.ERROR) {
-                    return { type: stmt.ValueType.LITERAL, value };
+                    return { type: Statement.ValueType.LITERAL, value };
                 }
                 return this.ERROR;
             });
             if (tuple !== this.ERROR) {
-                return { type: stmt.StatementType.INSERT, rel, tuple };
+                return { type: Statement.StatementType.INSERT, rel, tuple };
             }
         }
         this.pos = pos;
         return this.ERROR;
     }
 
-    private parseCreateStatement(): stmt.CreateStatement {
+    private parseCreateStatement(): Statement.CreateStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
@@ -103,7 +103,7 @@ export class Parser {
                     return this.ERROR;
                 });
                 if (attrs !== this.ERROR) {
-                    return { type: stmt.StatementType.CREATE, rel, attrs }
+                    return { type: Statement.StatementType.CREATE, rel, attrs }
                 }
             }
         }
@@ -111,15 +111,15 @@ export class Parser {
         return this.ERROR;
     }
 
-    private parseSelectStatement(): stmt.SelectStatement {
+    private parseSelectStatement(): Statement.SelectStatement {
         const pos = this.pos;
         const name = this.parseIdentifier();
         if (name !== this.ERROR) {
             this.skipWhitespace();
-            const exports = this.parseTuple((): { attr: string, value: stmt.VariableValue } => {
+            const exports = this.parseTuple((): { attr: string, value: Statement.VariableValue } => {
                 const value = this.parseNamedValue(() => this.parseIdentifier());
                 if (value !== this.ERROR) {
-                    return { attr: value.attr, value: { type: stmt.ValueType.VARIABLE, name: value.value } };
+                    return { attr: value.attr, value: { type: Statement.ValueType.VARIABLE, name: value.value } };
                 }
                 return this.ERROR;
             });
@@ -131,14 +131,14 @@ export class Parser {
                         const rel = this.parseIdentifier();
                         if (rel !== this.ERROR) {
                             this.skipWhitespace();
-                            const tuple = this.parseValueTuple((): stmt.Value => {
+                            const tuple = this.parseValueTuple((): Statement.Value => {
                                 const literal = this.parseLiteral();
                                 if (literal !== this.ERROR) {
-                                    return { type: stmt.ValueType.LITERAL, value: literal };
+                                    return { type: Statement.ValueType.LITERAL, value: literal };
                                 }
                                 const identifier = this.parseIdentifier();
                                 if (identifier !== this.ERROR) {
-                                    return { type: stmt.ValueType.VARIABLE, name: identifier };
+                                    return { type: Statement.ValueType.VARIABLE, name: identifier };
                                 }
                                 return this.ERROR;
                             });
@@ -149,7 +149,7 @@ export class Parser {
                         return this.ERROR;
                     });
                     if (body !== this.ERROR) {
-                        return { type: stmt.StatementType.SELECT, exports, name, body };
+                        return { type: Statement.StatementType.SELECT, exports, name, body };
                     }
                 }
             }
@@ -158,30 +158,30 @@ export class Parser {
         return this.ERROR;
     }
 
-    private parseInfoStatement(): stmt.InfoStatement {
+    private parseInfoStatement(): Statement.InfoStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         this.skipWhitespace();
         if (this.input[this.pos] === 0x3F) {
             this.pos++;
             if (rel === this.ERROR) {
-                return { type: stmt.StatementType.INFO };
+                return { type: Statement.StatementType.INFO };
             } else {
-                return { type: stmt.StatementType.INFO, rel };
+                return { type: Statement.StatementType.INFO, rel };
             }
         }
         this.pos = pos;
         return this.ERROR;
     }
 
-    private parseDumpStatement(): stmt.DumpStatement {
+    private parseDumpStatement(): Statement.DumpStatement {
         const pos = this.pos;
         const rel = this.parseIdentifier();
         if (rel !== this.ERROR) {
             this.skipWhitespace();
             if (this.input[this.pos] === 0x21) {
                 this.pos++;
-                return { type: stmt.StatementType.DUMP, rel };
+                return { type: Statement.StatementType.DUMP, rel };
             }
         }
         this.pos = pos;
@@ -206,15 +206,15 @@ export class Parser {
         return this.ERROR;
     }
 
-    private parseValueTuple<T extends stmt.Value>(valueParser: () => T): stmt.Tuple<T> {
+    private parseValueTuple<T extends Statement.Value>(valueParser: () => T): Statement.Tuple<T> {
         const unnamedTuple = this.parseTuple((): T => valueParser());
         if (unnamedTuple !== this.ERROR) {
-            return { type: stmt.TupleType.UNNAMED, values: unnamedTuple };
+            return { type: Statement.TupleType.UNNAMED, values: unnamedTuple };
         }
 
         const namedTuple = this.parseTuple((): { attr: string, value: T } => this.parseNamedValue(() => valueParser()));
         if (namedTuple !== this.ERROR) {
-            return { type: stmt.TupleType.NAMED, values: namedTuple };
+            return { type: Statement.TupleType.NAMED, values: namedTuple };
         }
 
         return this.ERROR;
