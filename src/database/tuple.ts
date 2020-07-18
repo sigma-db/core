@@ -67,11 +67,11 @@ export class Tuple implements ArrayLike<bigint>, Iterable<bigint>, IComparable<T
     }
 
     /**
-     * Returns an object representation of the tuple.
+     * Returns the tuple as an array of its attributes' values.
      * @param schema The schema to be used to format the tuple's attributes.
      */
-    public toObject(schema: Attribute[]): { [attr: string]: string | number | boolean } {
-        return Object.assign({}, ...schema.map((attr, idx) => ({ [attr.name]: attr.valueOf(this[idx]) })));
+    public toArray(schema: Attribute[]): Array<string | number | boolean> {
+        return schema.map((attr, idx) => attr.valueOf(this[idx]));
     }
 
     public *[Symbol.iterator](): IterableIterator<bigint> {

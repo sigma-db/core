@@ -206,12 +206,12 @@ export abstract class Relation implements Iterable<Tuple> {
     }
 
     /**
-     * Iterates the tuples in the relation and returns them in a format appropriate for console.table.
+     * Iterates the tuples in the relation and returns an array per tuple.
      * Note that due to the absence of a dedicated `char` data type, such values will be returned as string.
      */
-    public *tuples(): IterableIterator<{ [attr: string]: string | number | boolean }> {
+    public *tuples(): IterableIterator<Array<string | number | boolean>> {
         for (const tuple of this._tuples) {
-            yield tuple.toObject(this._schema);
+            yield tuple.toArray(this._schema);
         }
     }
 
