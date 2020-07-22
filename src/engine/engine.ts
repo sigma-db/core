@@ -1,6 +1,6 @@
 import * as Database from "../database";
 import * as Query from "../parser";
-import { IResolvedAtom, TetrisJoin } from "./tetris-join";
+import { ResolvedAtom, TetrisJoin } from "./tetris-join";
 import { Project } from "./project";
 import { VariableSet } from "./variable-set";
 
@@ -60,7 +60,7 @@ export abstract class Engine {
 
     /**
      * Given a statement and a database, evaluates the statement on the database.
-     * @param input The statement to evaluate
+     * @param statement The statement to evaluate
      * @param database The database to evaluate the statement on
      */
     public evaluate(statement: Query.Statement, database: Database.Instance): Result {
@@ -88,7 +88,7 @@ export abstract class Engine {
 
     protected abstract onSelect(statement: Query.SelectStatement, db: Database.Instance): Result;
 
-    protected resolve(cqatoms: Query.Atom[], schema: Database.Schema): [VariableSet, IResolvedAtom[]] {
+    protected resolve(cqatoms: Query.Atom[], schema: Database.Schema): [VariableSet, ResolvedAtom[]] {
         const valset = new VariableSet();
         const atoms = cqatoms.map(({ rel, tuple }) => {
             if (tuple.type === Query.TupleType.UNNAMED) {
@@ -99,7 +99,7 @@ export abstract class Engine {
                         if (v.type === Query.ValueType.VARIABLE) {
                             return valset.variable(type, width, v.name);
                         } else {
-                            throw new Error("Constants are not yet supported!");
+                            throw new Error("Constants are not supported!");
                         }
                     }),
                 };
@@ -113,7 +113,7 @@ export abstract class Engine {
                         } else if (v.value.type === Query.ValueType.VARIABLE) {
                             return valset.variable(spec.type, spec.width, v.value.name);
                         } else {
-                            throw new Error("Constants are not yet supported!");
+                            throw new Error("Constants are not supported!");
                         }
                     }),
                 };
@@ -164,7 +164,7 @@ export abstract class Engine {
             result = Database.Relation.create(`Relation Schema of "${statement.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             try {
                 db.getRelation(statement.rel).schema.forEach(({ name, type, width }) => {
-                    let typename =
+                    const typename =
                         type === Database.DataType.INT ? "Integer" :
                             type === Database.DataType.STRING ? "String" :
                                 type === Database.DataType.BOOL ? "Bool" :
@@ -192,12 +192,12 @@ export abstract class Engine {
 export class GeometricEngine extends Engine {
     protected onSelect(statement: Query.SelectStatement, db: Database.Instance): Result {
         const [vars, atoms] = super.resolve(statement.body, db.schema);
-        const queryAttrs = statement.exports as Array<{ attr: string, value: Query.VariableValue }>;
-        const schema = queryAttrs.map(({ attr, value }) => Database.Attribute.create(attr, vars.get(value.name).type, vars.get(value.name).width));
-        const prjSchema = queryAttrs.map(({ value }) => vars.get(value.name).id);
+        const exports = statement.exports as Array<{ attr: string, value: Query.VariableValue }>;
+        const schema = exports.map(({ attr, value: { name } }) => Database.Attribute.create(attr, vars.get(name).type, vars.get(name).width));
+        const projectedSchema = exports.map(({ value }) => vars.get(value.name).id);
 
         const joined = TetrisJoin.execute(atoms, vars);
-        const projected = Project.execute(joined, prjSchema);
+        const projected = Project.execute(joined, projectedSchema);
         const result = Database.Relation.create(statement.name, schema, { tuples: projected });
 
         return RELATION(result.static());

@@ -4,13 +4,13 @@ import { TypedVariable } from "./typed-variable";
 import { VariableSet } from "./variable-set";
 import { CDS } from "./cds";
 
-export interface IResolvedAtom {
+export interface ResolvedAtom {
     rel: Relation;
     vars: TypedVariable[];
 }
 
 export class TetrisJoin {
-    public static execute(atoms: IResolvedAtom[], values: VariableSet): SkipList<Tuple> {
+    public static execute(atoms: ResolvedAtom[], values: VariableSet): SkipList<Tuple> {
         return new TetrisJoin(values).execute(atoms);
     }
 
@@ -26,7 +26,7 @@ export class TetrisJoin {
         this.wildcard = this.schema.map(attr => attr.wildcard);
     }
 
-    private execute(atoms: IResolvedAtom[]): SkipList<Tuple> {
+    private execute(atoms: ResolvedAtom[]): SkipList<Tuple> {
         const all = Box.from(this.wildcard);
         const result = new SkipList<Tuple>();
 
@@ -44,7 +44,7 @@ export class TetrisJoin {
         return result;
     }
 
-    private gaps(atoms: IResolvedAtom[], tuple: Tuple): number {
+    private gaps(atoms: ResolvedAtom[], tuple: Tuple): number {
         let gapsCnt = 0;
         for (const { rel, vars } of atoms) {
             const _tuple = vars.map(v => tuple[this.variables.indexOf(v)]);
