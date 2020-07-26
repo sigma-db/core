@@ -1,5 +1,5 @@
 import * as Database from "../database";
-import * as Query from "../parser";
+import { Statement } from "../parser";
 import { ResolvedAtom, TetrisJoin } from "./tetris-join";
 import { Project } from "./project";
 import { VariableSet } from "./variable-set";
@@ -63,9 +63,9 @@ export abstract class Engine {
      * @param statement The statement to evaluate
      * @param database The database to evaluate the statement on
      */
-    public evaluate(statement: Query.Statement, database: Database.Instance): Result {
+    public evaluate(statement: Statement, database: Database.Instance): Result {
         const result = this.evaluateStatement(statement, database);
-        if (statement.type === Query.StatementType.SELECT && result.type === ResultType.RELATION) {
+        if (statement.type === Statement.StatementType.SELECT && result.type === ResultType.RELATION) {
             try {
                 database.addRelation(result.relation);
             } catch (e) {
@@ -75,28 +75,28 @@ export abstract class Engine {
         return result;
     }
 
-    private evaluateStatement(statement: Query.Statement, db: Database.Instance): Result {
+    private evaluateStatement(statement: Statement, db: Database.Instance): Result {
         switch (statement.type) {
-            case Query.StatementType.INSERT: return this.onInsert(statement, db);
-            case Query.StatementType.SELECT: return this.onSelect(statement, db);
-            case Query.StatementType.CREATE: return this.onCreate(statement, db);
-            case Query.StatementType.INFO: return this.onInfo(statement, db);
-            case Query.StatementType.DUMP: return this.onDump(statement, db);
+            case Statement.StatementType.INSERT: return this.onInsert(statement, db);
+            case Statement.StatementType.SELECT: return this.onSelect(statement, db);
+            case Statement.StatementType.CREATE: return this.onCreate(statement, db);
+            case Statement.StatementType.INFO: return this.onInfo(statement, db);
+            case Statement.StatementType.DUMP: return this.onDump(statement, db);
             default: throw new Error("Unsupported query type");
         }
     }
 
-    protected abstract onSelect(statement: Query.SelectStatement, db: Database.Instance): Result;
+    protected abstract onSelect(statement: Statement.SelectStatement, db: Database.Instance): Result;
 
-    protected resolve(cqatoms: Query.Atom[], schema: Database.Schema): [VariableSet, ResolvedAtom[]] {
+    protected resolve(cqatoms: Statement.Atom[], schema: Database.Schema): [VariableSet, ResolvedAtom[]] {
         const valset = new VariableSet();
         const atoms = cqatoms.map(({ rel, tuple }) => {
-            if (tuple.type === Query.TupleType.UNNAMED) {
+            if (tuple.type === Statement.TupleType.UNNAMED) {
                 return {
                     rel: schema[rel],
                     vars: tuple.values.map((v, i) => {
                         const { type, width } = schema[rel].schema[i];
-                        if (v.type === Query.ValueType.VARIABLE) {
+                        if (v.type === Statement.ValueType.VARIABLE) {
                             return valset.variable(type, width, v.name);
                         } else {
                             throw new Error("Constants are not supported!");
@@ -110,7 +110,7 @@ export abstract class Engine {
                         const v = tuple.values.find(val => val.attr === spec.name);
                         if (!v) {
                             return valset.variable(spec.type, spec.width);
-                        } else if (v.value.type === Query.ValueType.VARIABLE) {
+                        } else if (v.value.type === Statement.ValueType.VARIABLE) {
                             return valset.variable(spec.type, spec.width, v.value.name);
                         } else {
                             throw new Error("Constants are not supported!");
@@ -122,7 +122,7 @@ export abstract class Engine {
         return [valset, atoms];
     }
 
-    private onCreate(statement: Query.CreateStatement, db: Database.Instance): SuccessResult | ErrorResult {
+    private onCreate(statement: Statement.CreateStatement, db: Database.Instance): SuccessResult | ErrorResult {
         try {
             db.createRelation(statement.rel, statement.attrs.map(spec => Database.Attribute.from(spec)));
             return SUCCESS();
@@ -131,9 +131,9 @@ export abstract class Engine {
         }
     }
 
-    private onInsert(statement: Query.InsertStatement, db: Database.Instance): SuccessResult | ErrorResult {
-        let raw: Query.Literal[];
-        if (statement.tuple.type === Query.TupleType.UNNAMED) {
+    private onInsert(statement: Statement.InsertStatement, db: Database.Instance): SuccessResult | ErrorResult {
+        let raw: Statement.Literal[];
+        if (statement.tuple.type === Statement.TupleType.UNNAMED) {
             raw = statement.tuple.values.map(v => v.value);
         } else {
             const { values } = statement.tuple;
@@ -152,7 +152,7 @@ export abstract class Engine {
         return SUCCESS();
     }
 
-    private onInfo(statement: Query.InfoStatement, db: Database.Instance): Result {
+    private onInfo(statement: Statement.InfoStatement, db: Database.Instance): Result {
         let result: Database.Relation;
         if (!statement.rel) {
             result = Database.Relation.create("Database Schema", Engine.DATABASE_SCHEMA);
@@ -180,7 +180,7 @@ export abstract class Engine {
         return RELATION(result.static());
     }
 
-    private onDump(statement: Query.DumpStatement, db: Database.Instance): Result {
+    private onDump(statement: Statement.DumpStatement, db: Database.Instance): Result {
         try {
             return RELATION(db.getRelation(statement.rel).static());
         } catch (e) {
@@ -190,9 +190,9 @@ export abstract class Engine {
 }
 
 export class GeometricEngine extends Engine {
-    protected onSelect(statement: Query.SelectStatement, db: Database.Instance): Result {
+    protected onSelect(statement: Statement.SelectStatement, db: Database.Instance): Result {
         const [vars, atoms] = super.resolve(statement.body, db.schema);
-        const exports = statement.exports as Array<{ attr: string, value: Query.VariableValue }>;
+        const exports = statement.exports as Array<{ attr: string, value: Statement.VariableValue }>;
         const schema = exports.map(({ attr, value: { name } }) => Database.Attribute.create(attr, vars.get(name).type, vars.get(name).width));
         const projectedSchema = exports.map(({ value }) => vars.get(value.name).id);
 

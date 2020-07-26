@@ -1,5 +1,5 @@
 import { AttributeLike, DataType, Schema } from "../database";
-import * as Statement from "./statement";
+import Statement from "./statement";
 
 export interface ParserOpts {
     schema: Schema;
@@ -20,7 +20,7 @@ export class Parser {
 
     private constructor() { }
 
-    public *parse(input: string): IterableIterator<Statement.Statement> {
+    public *parse(input: string): IterableIterator<Statement> {
         this.reset(input);
         while (this.pos < this.input.length) {
             this.skipWhitespace();
@@ -49,7 +49,7 @@ export class Parser {
         }
     }
 
-    private parseStatement(): Statement.Statement {
+    private parseStatement(): Statement {
         return this.parseInsertStatement()
             ?? this.parseCreateStatement()
             ?? this.parseSelectStatement()
@@ -273,28 +273,28 @@ export class Parser {
     }
 
     private parseLiteral(): bigint {
-        if (this.input[this.pos] >= 49 && this.input[this.pos] <= 57) {   // parse an integer > 0
+        if (this.input[this.pos] >= 49 && this.input[this.pos] <= 57) { // parse an integer > 0
             let num = this.input[this.pos++] - 48;
             while (this.input[this.pos] >= 48 && this.input[this.pos] <= 57) {
                 num = num * 10 + this.input[this.pos++] - 48;
             }
             return BigInt(num);
-        } else if (this.input[this.pos] === 48) {    // parse the integer 0
+        } else if (this.input[this.pos] === 48) {   // parse the integer 0
             this.pos++;
             return 0n;
-        } else if (this.input[this.pos] === 0x22) {      // parse a string
+        } else if (this.input[this.pos] === 0x22) { // parse a string
             let str = 0n;
             while (this.input[++this.pos] !== 0x22) {
                 str = (str << 8n) + BigInt(this.input[this.pos]);
             }
             this.pos++;
             return str;
-        } else if (this.input[this.pos] === 0x27 && this.input[this.pos + 2] === 0x27) {       // parse a char
+        } else if (this.input[this.pos] === 0x27 && this.input[this.pos + 2] === 0x27) {    // parse a char
             this.pos += 3;
             return BigInt(this.input[this.pos - 2]);
-        } else if (this.match("true")) {           // parse a boolean true
+        } else if (this.match("true")) {    // parse a boolean true
             return 1n;
-        } else if (this.match("false")) {          // parse a boolean false
+        } else if (this.match("false")) {   // parse a boolean false
             return 0n;
         } else {
             return this.ERROR;

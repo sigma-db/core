@@ -1,2 +1,2 @@
-﻿export * from "./statement";
+﻿export { default as Statement } from "./statement";
 export * from "./parser";
