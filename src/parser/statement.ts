@@ -41,6 +41,7 @@ namespace Statement {
         type: StatementType.CREATE;
         rel: string;
         attrs: AttributeLike[];
+        values: Array<Tuple<LiteralValue>>;
     }
 
     export interface InsertStatement {
@@ -52,7 +53,7 @@ namespace Statement {
     export interface SelectStatement {
         type: StatementType.SELECT;
         name?: string;
-        exports: Array<{ attr: string, value: Value }>;
+        exports: NamedTuple<VariableValue>;
         body: Atom[];
     }
 

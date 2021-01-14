@@ -3,9 +3,7 @@ import { Relation } from "./relation";
 import { ObjectSchema, Type } from "./serialisation";
 import { TransactionLog } from "./transaction";
 
-export interface Schema {
-    [name: string]: Relation;
-}
+export type Schema = Record<string, Relation>;
 
 export interface InstanceOpts {
     path: string;

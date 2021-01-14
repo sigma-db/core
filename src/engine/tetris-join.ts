@@ -1,13 +1,7 @@
-import { Attribute, Box, Relation, Tuple } from "../database";
+import { Attribute, Box, Tuple } from "../database";
 import { SkipList } from "../util";
-import { TypedVariable } from "./typed-variable";
-import { VariableSet } from "./variable-set";
 import { CDS } from "./cds";
-
-export interface ResolvedAtom {
-    rel: Relation;
-    vars: TypedVariable[];
-}
+import { ResolvedAtom, ResolvedVariable, VariableSet } from "./resolver";
 
 export class TetrisJoin {
     public static execute(atoms: ResolvedAtom[], values: VariableSet): SkipList<Tuple> {
@@ -16,7 +10,7 @@ export class TetrisJoin {
 
     private readonly kb: CDS;
     private readonly schema: Attribute[];
-    private readonly variables: TypedVariable[];
+    private readonly variables: ResolvedVariable[];
     private readonly wildcard: Array<bigint>;
 
     constructor(values: VariableSet) {

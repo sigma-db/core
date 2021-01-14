@@ -1,21 +1,11 @@
 import * as Database from "../database";
 import { Statement } from "../parser";
-import { ResolvedAtom, TetrisJoin } from "./tetris-join";
+import { Resolver } from "./resolver";
+import { Result, ResultType } from "./result";
 import { Project } from "./project";
-import { VariableSet } from "./variable-set";
+import { TetrisJoin } from "./tetris-join";
 
 export const enum EngineType { ALGEBRAIC, GEOMETRIC }
-export const enum ResultType { RELATION, SUCCESS, ERROR }
-
-type RelationResult = { type: ResultType.RELATION, relation: Database.Relation };
-type SuccessResult = { type: ResultType.SUCCESS };
-type ErrorResult = { type: ResultType.ERROR, message: string };
-
-export type Result = RelationResult | SuccessResult | ErrorResult;
-
-const RELATION = (relation: Database.Relation): RelationResult => ({ type: ResultType.RELATION, relation });
-const SUCCESS = (): SuccessResult => ({ type: ResultType.SUCCESS });
-const ERROR = (message: string): ErrorResult => ({ type: ResultType.ERROR, message });
 
 export interface EngineOpts {
     type: EngineType;
@@ -29,9 +19,7 @@ export abstract class Engine {
     public static create(opts: Partial<EngineOpts> = { type: EngineType.GEOMETRIC }): Engine {
         switch (opts.type) {
             case EngineType.ALGEBRAIC: return null;
-            case EngineType.GEOMETRIC:
-            default:
-                return new GeometricEngine();
+            case EngineType.GEOMETRIC: return new GeometricEngine();
         }
     }
 
@@ -56,7 +44,15 @@ export abstract class Engine {
         Database.Attribute.create("Width", Database.DataType.INT),
     ];
 
-    protected constructor() { }
+    /**
+     * Mapping from data types to their human-readable names
+     */
+    private static readonly DATA_TYPE_NAME_MAP: Record<Database.DataType, string> = {
+        [Database.DataType.INT]: "Integer",
+        [Database.DataType.STRING]: "String",
+        [Database.DataType.BOOL]: "Bool",
+        [Database.DataType.CHAR]: "Char",
+    };
 
     /**
      * Given a statement and a database, evaluates the statement on the database.
@@ -69,7 +65,7 @@ export abstract class Engine {
             try {
                 database.addRelation(result.relation);
             } catch (e) {
-                return ERROR(e.message);
+                return Result.Error(e.message);
             }
         }
         return result;
@@ -86,70 +82,64 @@ export abstract class Engine {
         }
     }
 
+    private createDatabaseTuple(tuple: Statement.Tuple<Statement.LiteralValue>, schema: Database.Attribute[]): Database.Tuple | Result {
+        let raw: Statement.Literal[];
+        if (tuple.type === Statement.TupleType.UNNAMED) {
+            raw = tuple.values.map(v => v.value);
+        } else {
+            const { values } = tuple;
+            try {
+                raw = schema.map(attr => values.find(val => val.attr === attr.name).value.value);
+            } catch (e) {
+                return Result.Error(`The tuple does not match the relation's schema.`);
+            }
+        }
+        return Database.Tuple.from(raw);
+    }
+
     protected abstract onSelect(statement: Statement.SelectStatement, db: Database.Instance): Result;
 
-    protected resolve(cqatoms: Statement.Atom[], schema: Database.Schema): [VariableSet, ResolvedAtom[]] {
-        const valset = new VariableSet();
-        const atoms = cqatoms.map(({ rel, tuple }) => {
-            if (tuple.type === Statement.TupleType.UNNAMED) {
-                return {
-                    rel: schema[rel],
-                    vars: tuple.values.map((v, i) => {
-                        const { type, width } = schema[rel].schema[i];
-                        if (v.type === Statement.ValueType.VARIABLE) {
-                            return valset.variable(type, width, v.name);
-                        } else {
-                            throw new Error("Constants are not supported!");
-                        }
-                    }),
-                };
-            } else {
-                return {
-                    rel: schema[rel],
-                    vars: schema[rel].schema.map(spec => {
-                        const v = tuple.values.find(val => val.attr === spec.name);
-                        if (!v) {
-                            return valset.variable(spec.type, spec.width);
-                        } else if (v.value.type === Statement.ValueType.VARIABLE) {
-                            return valset.variable(spec.type, spec.width, v.value.name);
-                        } else {
-                            throw new Error("Constants are not supported!");
-                        }
-                    }),
-                };
-            }
-        });
-        return [valset, atoms];
-    }
-
-    private onCreate(statement: Statement.CreateStatement, db: Database.Instance): SuccessResult | ErrorResult {
+    private onCreate(statement: Statement.CreateStatement, db: Database.Instance): Result {
+        // creation
         try {
             db.createRelation(statement.rel, statement.attrs.map(spec => Database.Attribute.from(spec)));
-            return SUCCESS();
         } catch (e) {
-            return ERROR(e.message);
+            return Result.Error(e.message);
         }
-    }
 
-    private onInsert(statement: Statement.InsertStatement, db: Database.Instance): SuccessResult | ErrorResult {
-        let raw: Statement.Literal[];
-        if (statement.tuple.type === Statement.TupleType.UNNAMED) {
-            raw = statement.tuple.values.map(v => v.value);
-        } else {
-            const { values } = statement.tuple;
-            try {
-                raw = db.getRelation(statement.rel).schema.map(attr => values.find(val => val.attr === attr.name).value.value);
-            } catch (e) {
-                return ERROR(e.message);
+        // initialisation
+        const rel = db.getRelation(statement.rel);
+        for (const tuple of statement.values) {
+            const _tuple = this.createDatabaseTuple(tuple, rel.schema);
+            if (Result.isResult(_tuple)) {
+                return _tuple;
+            } else {
+                try {
+                    rel.insert(_tuple);
+                } catch (e) {
+                    return Result.Error(e.message);
+                }
             }
         }
-        const _tuple = Database.Tuple.from(raw);
-        try {
-            db.getRelation(statement.rel).insert(_tuple);
-        } catch (e) {
-            return ERROR(e.message);
+
+        return Result.Success();
+    }
+
+    private onInsert(statement: Statement.InsertStatement, db: Database.Instance): Result {
+        if (!db.hasRelation(statement.rel)) {
+            return Result.Error(`Relation "${statement.rel}" does not exist in the given instance.`);
         }
-        return SUCCESS();
+        const tuple = this.createDatabaseTuple(statement.tuple, db.getRelation(statement.rel).schema);
+        if (Result.isResult(tuple)) {
+            return tuple;
+        } else {
+            try {
+                db.getRelation(statement.rel).insert(tuple);
+                return Result.Success();
+            } catch (e) {
+                return Result.Error(e.message);
+            }
+        }
     }
 
     private onInfo(statement: Statement.InfoStatement, db: Database.Instance): Result {
@@ -164,42 +154,43 @@ export abstract class Engine {
             result = Database.Relation.create(`Relation Schema of "${statement.rel}"`, Engine.RELATION_SCHEMA, { sorted: false });
             try {
                 db.getRelation(statement.rel).schema.forEach(({ name, type, width }) => {
-                    const typename =
-                        type === Database.DataType.INT ? "Integer" :
-                            type === Database.DataType.STRING ? "String" :
-                                type === Database.DataType.BOOL ? "Bool" :
-                                    type === Database.DataType.CHAR ? "Char" :
-                                        "<invalid>";
+                    const typename = Engine.DATA_TYPE_NAME_MAP[type];
                     const tuple = Database.Tuple.create([name, typename, width]);
                     result.insert(tuple);
                 });
             } catch (e) {
-                return ERROR(e.message);
+                return Result.Error(e.message);
             }
         }
-        return RELATION(result.static());
+        return Result.Relation(result.static());
     }
 
     private onDump(statement: Statement.DumpStatement, db: Database.Instance): Result {
         try {
-            return RELATION(db.getRelation(statement.rel).static());
+            return Result.Relation(db.getRelation(statement.rel).static());
         } catch (e) {
-            return ERROR(e.message);
+            return Result.Error(e.message);
         }
     }
 }
 
 export class GeometricEngine extends Engine {
     protected onSelect(statement: Statement.SelectStatement, db: Database.Instance): Result {
-        const [vars, atoms] = super.resolve(statement.body, db.schema);
-        const exports = statement.exports as Array<{ attr: string, value: Statement.VariableValue }>;
-        const schema = exports.map(({ attr, value: { name } }) => Database.Attribute.create(attr, vars.get(name).type, vars.get(name).width));
-        const projectedSchema = exports.map(({ value }) => vars.get(value.name).id);
+        const resolver = Resolver.create(db.schema);
+        const [vars, atoms] = resolver.resolve(statement);
+        const schema = statement.exports.values.map(({ attr, value: { name } }) => Database.Attribute.create(attr, vars.get(name).type, vars.get(name).width));
+        const projectedSchema = statement.exports.values.map(({ value }) => vars.get(value.name).id);
 
         const joined = TetrisJoin.execute(atoms, vars);
         const projected = Project.execute(joined, projectedSchema);
         const result = Database.Relation.create(statement.name, schema, { tuples: projected });
 
-        return RELATION(result.static());
+        return Result.Relation(result.static());
+    }
+}
+
+export class AlgebraicEngine extends Engine {
+    protected onSelect(statement: Statement.SelectStatement, db: Database.Instance): Result {
+        throw new Error("Method not implemented.");
     }
 }
