@@ -1,15 +1,11 @@
-import { AttributeLike, DataType, Schema } from "../database";
+import { AttributeLike, DataType } from "../database";
 import Statement from "./statement";
 import { ERROR } from "./constants";
 import { product, union, kleene } from "./helpers";
 
-export interface ParserOpts {
-    schema: Schema;
-}
-
 /**
  * Parses our dialect of conjunctive queries.
- * Note that we do not yet implement any error recovery and thus expect valid queries as input.
+ * Note that we do not implement any error recovery and thus expect valid queries as input.
  */
 export class Parser {
     public static create(): Parser {
@@ -107,22 +103,8 @@ export class Parser {
                 });
                 if (attrs !== ERROR) {  // try parsing initial values
                     this.whitespace();
-                    const assignmentPos = this.pos;
-                    if (this.match(":=")) {
-                        this.whitespace();
-                        const values = this.list(() => this.valueTuple((): Statement.LiteralValue => {
-                            const value = this.literal();
-                            if (value !== ERROR) {
-                                return { type: Statement.ValueType.LITERAL, value };
-                            }
-                            return ERROR;
-                        }));
-                        if (values !== ERROR) {
-                            return { type: Statement.StatementType.CREATE, rel, attrs, values };
-                        }
-                    }
-                    this.pos = assignmentPos;
-                    return { type: Statement.StatementType.CREATE, rel, attrs, values: [] };
+                    const values = this.initialisationList();
+                    return { type: Statement.StatementType.CREATE, rel, attrs, values };
                 }
             }
         }
@@ -207,6 +189,25 @@ export class Parser {
         return ERROR;
     }
 
+    private initialisationList(): Array<Statement.Tuple<Statement.LiteralValue>> {
+        const pos = this.pos;
+        if (this.match(":=")) {
+            this.whitespace();
+            const values = this.list(() => this.valueTuple((): Statement.LiteralValue => {
+                const value = this.literal();
+                if (value !== ERROR) {
+                    return { type: Statement.ValueType.LITERAL, value };
+                }
+                return ERROR;
+            }));
+            if (values !== ERROR) {
+                return values;
+            }
+        }
+        this.pos = pos;
+        return [];
+    }
+
     private namedValue<T>(valueParser: () => T): { attr: string, value: T } {
         const pos = this.pos;
         const attr = this.identifier();
@@ -258,7 +259,7 @@ export class Parser {
                 this.pos++;
                 return values;
             }
-        } else if (optionalSingletonBrace && min <= 1 && 1 <= max) {  // try parsing a single value without surrounding braces
+        } else if (optionalSingletonBrace && min == 1 && 1 == max) {  // try parsing a single value without surrounding braces
             const value = valueParser();
             if (value !== ERROR) {
                 return [value];
@@ -269,7 +270,7 @@ export class Parser {
     }
 
     /**
-     * Parses a list of n comma-separated entries with min <= x <= max and max = -1 == infinity
+     * Parses a list of n comma-separated entries with min <= n <= max and max = -1 == infinity
      */
     private list<T>(entry: () => T, min = 0, max = -1): T[] {
         const separator = () => this.separator(0x2C);
@@ -339,7 +340,7 @@ export class Parser {
     }
 
     private charLiteral(): bigint {
-        if (this.input[this.pos] === 0x27 && this.input[this.pos + 2] === 0x27) {    // parse a char
+        if (this.input[this.pos] === 0x27 && this.input[this.pos + 2] === 0x27) {
             this.pos += 3;
             return BigInt(this.input[this.pos - 2]);
         }
